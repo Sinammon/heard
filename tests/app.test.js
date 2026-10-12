@@ -34,13 +34,13 @@ function fakeProvider() {
     },
   };
 }
-async function setup(provider = fakeProvider()) {
+async function setup(provider = fakeProvider(), practice = { mode: 'free' }) {
   const app = await buildApp({ provider, serveStatic: false });
   apps.push(app);
   const response = await app.inject({
     method: 'POST',
     url: '/api/sessions',
-    payload: { cloudConsent: true },
+    payload: { cloudConsent: true, practice },
   });
   return { app, id: response.json().id, cookie: response.headers['set-cookie'].split(';')[0] };
 }
@@ -252,4 +252,121 @@ it('preserves visual feedback when word-timed transcription fails', async () => 
   expect(visualInput.trackingCoverage).toBe(1);
   expect(result.visualMetrics.coverage).toBe(1);
   expect(result.score.score).toBeNull();
+});
+
+async function submitShortTake(app, id, cookie) {
+  const { blob } = wavFromChunks([new Float32Array(16000)]);
+  const audio = Buffer.from(await blob.arrayBuffer());
+  const payload = {
+    durationMs: 1000,
+    mode: 'seated',
+    poseSamples: [],
+    postureEvents: [],
+    frames: [],
+    acoustics: { pitchVariation: null, relativeLoudness: 0, clippedFraction: 0 },
+  };
+  const boundary = 'memory-fixture';
+  const body = Buffer.concat([
+    Buffer.from(
+      `--${boundary}\r\nContent-Disposition: form-data; name="payload"\r\n\r\n${JSON.stringify(payload)}\r\n--${boundary}\r\nContent-Disposition: form-data; name="audio"; filename="practice.wav"\r\nContent-Type: audio/wav\r\n\r\n`,
+    ),
+    audio,
+    Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+  return app.inject({
+    method: 'POST',
+    url: `/api/sessions/${id}/analyze`,
+    headers: { cookie, 'content-type': `multipart/form-data; boundary=${boundary}` },
+    payload: body,
+  });
+}
+it('compares memory with the session script without leaking it to visual or delivery-only reviews', async () => {
+  const provider = fakeProvider(),
+    calls = [];
+  provider.review = async (stage, data, media) => {
+    calls.push({ stage, data, media });
+    return report;
+  };
+  const reference = 'A useful original script about forming a small daily habit.';
+  const { app, id, cookie } = await setup(provider, {
+    mode: 'memorization',
+    script: reference,
+    minutes: 2,
+  });
+  expect((await submitShortTake(app, id, cookie)).statusCode).toBe(202);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const result = (
+    await app.inject({ url: `/api/sessions/${id}/report`, headers: { cookie } })
+  ).json();
+  expect(result.status).toBe('complete');
+  expect(result.stages.memory).toEqual(report);
+  expect(result.stageStatus.memory).toBe('complete');
+  const memory = calls.find((call) => call.stage === 'memory');
+  expect(memory.data.referenceScript).toBe(reference);
+  expect(memory.data.transcript).toBe('hello');
+  expect(memory.media).toEqual([]);
+  expect(calls.find((call) => call.stage === 'audio').data).not.toHaveProperty('referenceScript');
+  expect(calls.find((call) => call.stage === 'video').data).not.toHaveProperty('transcript');
+  expect(calls.find((call) => call.stage === 'video').data).not.toHaveProperty('referenceScript');
+  expect(calls.find((call) => call.stage === 'combined').data.memory).toEqual(report);
+  const count = calls.length;
+  await submitShortTake(app, id, cookie);
+  expect(calls).toHaveLength(count);
+});
+it('preserves delivery reviews when memory feedback fails and retries only the missing stage', async () => {
+  const provider = fakeProvider();
+  let failed = true;
+  const calls = [];
+  provider.review = async (stage) => {
+    calls.push(stage);
+    if (stage === 'memory' && failed) throw new Error('Failed memory review');
+    return report;
+  };
+  const { app, id, cookie } = await setup(provider, {
+    mode: 'memorization',
+    script: 'Remember three useful ideas about practice.',
+    minutes: 1,
+  });
+  await submitShortTake(app, id, cookie);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  let result = (
+    await app.inject({ url: `/api/sessions/${id}/report`, headers: { cookie } })
+  ).json();
+  expect(result.status).toBe('partial');
+  expect(result.stageStatus.memory).toBe('failed');
+  expect(result.stages.audio).toEqual(report);
+  expect(result.stages.video).toEqual(report);
+  failed = false;
+  calls.length = 0;
+  await submitShortTake(app, id, cookie);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  result = (await app.inject({ url: `/api/sessions/${id}/report`, headers: { cookie } })).json();
+  expect(result.status).toBe('complete');
+  expect(result.stages.memory).toEqual(report);
+  expect(calls).toEqual(['memory']);
+});
+it('does not invent memory feedback when transcription fails', async () => {
+  const provider = fakeProvider();
+  const calls = [];
+  provider.transcribe = async () => {
+    throw new Error('No transcript');
+  };
+  provider.review = async (stage) => {
+    calls.push(stage);
+    return report;
+  };
+  const { app, id, cookie } = await setup(provider, {
+    mode: 'memorization',
+    script: 'Remember three useful ideas about practice.',
+    minutes: 1,
+  });
+  await submitShortTake(app, id, cookie);
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  const result = (
+    await app.inject({ url: `/api/sessions/${id}/report`, headers: { cookie } })
+  ).json();
+  expect(result.status).toBe('partial');
+  expect(result.stageStatus.memory).toBe('skipped');
+  expect(result.stages).not.toHaveProperty('memory');
+  expect(calls).toEqual(['video']);
 });

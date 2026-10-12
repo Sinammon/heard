@@ -16,6 +16,7 @@ import {
   validateWav,
 } from './validation.js';
 import { flashcardsSchema } from '../shared/flashcards.js';
+import { sessionInputSchema } from '../shared/practice.js';
 import { finalScore, postureCoverage } from '../shared/scoring.js';
 
 export async function buildApp({
@@ -149,6 +150,7 @@ export async function buildApp({
       return reply.code(503).send({
         error: 'AI practice is unavailable. Configure the Gemini service before recording.',
       });
+    const input = sessionInputSchema.parse(request.body);
     const owner = request.cookies.stagecraft || randomUUID();
     reply.setCookie('stagecraft', owner, {
       httpOnly: true,
@@ -160,6 +162,7 @@ export async function buildApp({
       maxAge: 7200,
     });
     const s = store.create(owner);
+    s.practice = input.practice;
     return { id: s.id };
   });
   app.delete('/api/sessions/:id', async (request, reply) => {
@@ -220,7 +223,13 @@ export async function buildApp({
     s.status = 'processing';
     s.error = null;
     s.report.stageStatus = Object.fromEntries(
-      ['transcript', 'audio', 'video', 'combined'].map((key) => [
+      [
+        'transcript',
+        'audio',
+        ...(s.practice?.mode === 'memorization' ? ['memory'] : []),
+        'video',
+        'combined',
+      ].map((key) => [
         key,
         (key === 'transcript' ? s.transcript : s.report.stages[key]) ? 'complete' : 'waiting',
       ]),
@@ -311,6 +320,28 @@ export async function buildApp({
           errors.push(publicProviderError(e));
         }
       }
+      if (s.practice?.mode === 'memorization') {
+        if (s.transcript && !s.report.stages.memory) {
+          try {
+            s.report.stages.memory = await attempt('memory', () =>
+              provider.review(
+                'memory',
+                {
+                  referenceScript: s.practice.script,
+                  transcript: s.transcript.text,
+                  words: s.transcript.words,
+                  evidence: evidence.filter((e) => ['filler', 'pause'].includes(e.category)),
+                },
+                [],
+                signal,
+              ),
+            );
+          } catch (e) {
+            if (signal.aborted) throw e;
+            errors.push(publicProviderError(e));
+          }
+        } else if (!s.transcript) s.report.stageStatus.memory = 'skipped';
+      }
       if (!s.report.stages.video) {
         try {
           s.report.stages.video = await attempt('video', () =>
@@ -344,6 +375,9 @@ export async function buildApp({
               {
                 audio: s.report.stages.audio,
                 video: s.report.stages.video,
+                ...(s.practice?.mode === 'memorization'
+                  ? { memory: s.report.stages.memory || null }
+                  : {}),
                 score: scoring.score,
                 penalties: scoring.penalties,
                 evidence,

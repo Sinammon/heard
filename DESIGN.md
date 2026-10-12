@@ -6,16 +6,11 @@ welcoming and enough restraint to keep attention on the user's talk.
 
 ## Information architecture
 
-- **Home** (`#home`): one promise, one topic launcher, a three-step overview, an illustrative review
-  explorer, and a compact FAQ. No testimonials, invented results, or duplicate promotional CTAs.
-- **Our approach** (`#about`): preparation, observable feedback, evidence, and plain-language privacy.
-- **Studio** (`#studio`): three progress stages — Prepare, Practice, Review. Preparation offers manual
-  writing and Gemini drafting. Practice includes device selection, seated/standing posture,
-  optional calibration, required AI consent, adaptive talking-point cards after a first read-through, and recording. Review has Listen, Watch, and Reflect
-  modes for audio-only, muted video, and combined playback with coaching.
+Home (`#home`), Our approach (`#about`), and Studio (`#studio`) are separate routed pages with shared sticky navigation. Home keeps the bare orange mark on the left, a brief promise, one topic launcher, a review explorer, and essential FAQ. Privacy detail lives on Our approach and at the point of consent.
 
-Home, approach, and studio sit on one scrolling page. Sticky hash navigation scrolls without
-unmounting the studio, including during recording. Studio workflow changes preserve draft/review state. The old draft storage key is deliberately retained for existing users.
+Studio is a focused Prepare → Practice → Review environment. A shared registry defines Free practice and Memorization test. A timed test studies a manual or generated script for 1–30 minutes, then automatically records with only AI key points visible. Early start, cancel, retry, and device failure states are explicit. Recall feedback compares the transcript with the source script separately from delivery reviews and deterministic scoring.
+
+Hash navigation preserves drafts, preferences, and completed reviews. Setup releases devices on leaving the Studio; active memorization, recording, and busy actions require completion or cancellation first. The old draft storage key remains for existing users. `main` and `version-2` preserve the previous release; development stays on `version-3`.
 
 ## Identity
 
@@ -39,7 +34,7 @@ quiet border. Panels use 1px structural borders, 10px corners, and generous inte
 are no gradients or heavy shadows. Phosphor Bold SVG icons are bundled individually.
 
 The script editor is the largest preparation surface. Guidance is secondary and removed on narrow
-screens. Setup puts required AI consent before the mirrored camera and optional posture calibration. A confirmed read-through or first recorded take creates 3–8 AI talking-point cards; the next take shows cards with the full script available in a disclosure. Recording puts Finish
+screens. Setup puts required AI consent before the mirrored camera and optional posture calibration. Calibration rejects unstable samples, corrects image aspect ratio, and uses torso evidence when hips are visible. Smoothed sustained warnings and recovery hysteresis avoid flicker; seated upper-body-only tracking is labeled. A confirmed read-through or first recorded take creates 3–8 AI talking-point cards; the next take shows cards with the full script available in a disclosure. Recording puts Finish
 practice next to the timer. Reviews keep playback, measured data, evidence, and feedback together.
 Unavailable measurements stay explicit; illustrations never masquerade as live results.
 
@@ -57,5 +52,5 @@ Unavailable measurements stay explicit; illustrations never masquerade as live r
 
 ## Scope
 
-This redesign changes branding, layout, navigation presentation, and copy. It adds a bounded, consent-checked `/api/flashcards` route and requires configured AI for session creation. Scoring, recording limits, quota rules, session ownership, and deployed backend lifecycle remain unchanged.
+This redesign changes branding, layout, navigation presentation, and copy. It retains the bounded, consent-checked `/api/flashcards` route and required AI consent. Sessions accept validated mode/reference data for recall review. Scoring, recording limits, quota rules, session ownership, and deployed backend lifecycle remain unchanged.
 No public deployment is performed by the redesign.

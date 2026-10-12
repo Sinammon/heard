@@ -286,7 +286,9 @@ main:focus {
   padding: 10px 16px;
   font-size: 0.896rem;
 }
-.public-site main > section {
+.public-site main > section,
+.public-site #home-page > section,
+.public-site #about-page > section {
   margin-inline: 64px;
 }
 .landing-hero {
@@ -1790,7 +1792,9 @@ textarea {
   .site-footer {
     margin-inline: 40px;
   }
-  .public-site main > section {
+  .public-site main > section,
+  .public-site #home-page > section,
+  .public-site #about-page > section {
     margin-inline: 40px;
   }
   .landing-hero {
@@ -1968,7 +1972,9 @@ textarea {
     font-size: 0.85rem;
     padding-inline: 13px;
   }
-  .public-site main > section {
+  .public-site main > section,
+  .public-site #home-page > section,
+  .public-site #about-page > section {
     margin-inline: 24px;
   }
   .landing-hero {
@@ -2831,6 +2837,8 @@ textarea {
     padding-inline: 16px;
   }
   .public-site main > section,
+  .public-site #home-page > section,
+  .public-site #about-page > section,
   .site-footer {
     margin-inline: 16px;
   }
@@ -2883,5 +2891,241 @@ textarea {
 @media (max-width: 650px) {
   .ai-consent-panel {
     padding: 22px;
+  }
+}
+
+/* Dedicated routes keep public content out of the practice workspace. */
+[hidden] {
+  display: none !important;
+}
+.training-modes {
+  border: 0;
+  padding: 0;
+  margin: 0 0 36px;
+}
+.training-modes legend {
+  font-size: 1rem;
+  font-weight: 550;
+  margin-bottom: 16px;
+}
+.training-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+.training-option {
+  display: flex;
+  align-items: start;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.training-option.selected {
+  background: #edf3ec;
+}
+.training-option input {
+  accent-color: var(--ink);
+  min-width: 20px;
+  min-height: 20px;
+}
+.training-option strong {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 7px;
+}
+.training-option small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+.memorization-duration {
+  display: grid;
+  grid-template-columns: auto 90px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+  margin-top: 20px;
+}
+.memorization-duration label {
+  margin: 0;
+}
+.memorization-duration input {
+  min-width: 0;
+}
+.memorization-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, 0.65fr) minmax(0, 1.5fr);
+  gap: clamp(28px, 5vw, 72px);
+  align-items: start;
+}
+.study-clock {
+  position: sticky;
+  top: 130px;
+  padding-block: 24px;
+}
+.study-clock strong {
+  font-size: clamp(3.5rem, 5vw, 5rem);
+  font-weight: 450;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  display: block;
+  margin-block: 16px;
+}
+.study-clock > p {
+  color: var(--muted);
+}
+.study-clock button {
+  margin-top: 24px;
+  width: 100%;
+}
+.study-script {
+  padding: 36px;
+  background: white;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+}
+.study-script > p:last-child {
+  margin-top: 20px;
+  white-space: pre-wrap;
+  font-size: 1.22rem;
+  line-height: 1.9;
+}
+.test-note {
+  color: var(--muted);
+  margin-block: 24px;
+}
+.memory-review {
+  padding: 32px;
+  background: #edf3ec;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  margin-bottom: 32px;
+}
+.memory-review h2 {
+  margin-block: 12px 18px;
+}
+.memory-observations {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px;
+  margin-top: 24px;
+}
+.memory-observations article {
+  margin-top: 18px;
+}
+.memory-observations h4 {
+  margin-bottom: 8px;
+}
+.memory-review > .local-hint {
+  margin-top: 20px;
+}
+@media (max-width: 800px) {
+  .memorization-duration {
+    grid-template-columns: minmax(0, 1fr) 90px;
+  }
+  .memorization-duration p {
+    grid-column: 1 / -1;
+  }
+  .memorization-layout {
+    grid-template-columns: 1fr;
+  }
+  .study-clock {
+    position: static;
+    padding-top: 0;
+  }
+  .study-clock button {
+    width: auto;
+    margin-right: 16px;
+  }
+}
+@media (max-width: 650px) {
+  .training-options,
+  .memory-observations {
+    grid-template-columns: 1fr;
+  }
+  .training-option {
+    padding: 20px;
+  }
+  .study-script,
+  .memory-review {
+    padding: 24px;
+  }
+  .study-clock button {
+    width: 100%;
+  }
+  .memorization-duration {
+    gap: 12px;
+  }
+}
+/* Preserve the complete camera frame and align landmarks with its letterboxing. */
+.preview video,
+.preview canvas {
+  object-fit: contain;
+}
+.training-option input {
+  width: 20px;
+  flex: 0 0 20px;
+}
+.recording-aside .flashcards-section {
+  margin-top: 0;
+  border-top: 0;
+  padding-top: 0;
+}
+.recording-aside .cards-heading {
+  display: block;
+  margin-bottom: 18px;
+}
+.recording-aside .cards-heading h2 {
+  font-size: 1.6rem;
+}
+.recording-aside .cards-heading p:not(.eyebrow) {
+  font-size: 0.9rem;
+}
+.recording-aside .cards-heading .pill {
+  margin-top: 8px;
+}
+.recording-aside .flashcard-grid {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.recording-aside .flashcard {
+  padding: 20px;
+}
+.recording-aside .flashcard h3 {
+  margin-block: 10px 6px;
+  font-size: 1rem;
+}
+.recording-aside .flashcard p {
+  font-size: 0.9rem;
+}
+.test-measurements summary {
+  cursor: pointer;
+  min-height: 44px;
+}
+.test-measurements .score-panel {
+  margin-block: 16px;
+}
+@media (max-width: 650px) {
+  .recording-grid:has(.test-note) .recording-aside {
+    grid-row: 1;
+  }
+  .recording-grid:has(.test-note) .preview {
+    max-height: 300px;
+  }
+}
+.test-toolbar {
+  position: sticky;
+  top: 98px;
+  z-index: 9;
+  background: #faf9f6;
+  border-block: 1px solid var(--line);
+  padding-block: 16px;
+  margin-bottom: 24px;
+}
+@media (max-width: 650px) {
+  .test-toolbar {
+    top: 126px;
   }
 }

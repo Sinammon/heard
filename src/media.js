@@ -1,4 +1,4 @@
-import { calibrate, measurements, deviation, EpisodeTracker } from '../shared/posture.js';
+import { calibrate, measurements, PostureDetector, EpisodeTracker } from '../shared/posture.js';
 import { provisionalScore, isFiller } from '../shared/scoring.js';
 
 export function wavFromChunks(chunks) {
@@ -45,7 +45,8 @@ export class PracticeMedia {
     this.events = [];
     this.pcm = [];
     this.frames = [];
-    this.episodes = new EpisodeTracker();
+    this.episodes = new EpisodeTracker({ sustainMs: 0, recoveryMs: 0 });
+    this.postureDetector = new PostureDetector();
     this.turns = [];
     this.seenTurns = new Set();
     this.lastPose = null;
@@ -71,7 +72,7 @@ export class PracticeMedia {
     await video.play();
     for (const track of this.stream.getTracks())
       track.addEventListener('ended', () => {
-        if (this.running)
+        if (this.ready || this.running)
           this.callbacks.onInterrupt?.(
             'A recording device disconnected. Your recording has been preserved.',
           );
@@ -146,9 +147,11 @@ export class PracticeMedia {
       if (data.type === 'error') this.callbacks.onLive?.(data.message);
       if (data.type === 'pose') {
         this.poseBusy = false;
-        const m = measurements(data.landmarks, this.mode);
+        const m = measurements(data.landmarks, this.mode, data.aspectRatio, data.worldLandmarks);
         if (this.calibrating && m) this.calibrationSamples.push(m);
-        const posture = deviation(m, this.baseline, this.mode);
+        const posture = this.postureDetector.update(m, this.baseline, this.mode, data.time);
+        this.lastPoseTime = performance.now();
+        this.poseStale = false;
         this.lastPose = { ...posture, landmarks: data.landmarks };
         if (this.running) {
           const sample = {
@@ -171,6 +174,21 @@ export class PracticeMedia {
   frameLoop() {
     if (!this.ready) return;
     const time = performance.now();
+    if (this.baseline && time - (this.lastPoseTime || time) > 1000 && !this.poseStale) {
+      this.poseStale = true;
+      this.postureDetector.reset();
+      this.episodes.update({
+        timeMs: Math.max(0, time - (this.startedAt || time)),
+        valid: false,
+        deviation: false,
+      });
+      this.callbacks.onPose?.({
+        valid: false,
+        deviation: false,
+        hint: 'Tracking paused · waiting for camera frames',
+        landmarks: null,
+      });
+    }
     if (
       this.poseReady &&
       !this.poseBusy &&
@@ -205,6 +223,7 @@ export class PracticeMedia {
     if (!this.poseReady) throw new Error('Wait for the posture model to load.');
     this.mode = mode;
     this.baseline = null;
+    this.postureDetector.reset();
     this.calibrationSamples = [];
     this.noiseSamples = [];
     this.calibrating = true;
@@ -276,6 +295,7 @@ export class PracticeMedia {
     this.turns = [];
     this.seenTurns.clear();
     this.episodes.reset();
+    this.postureDetector.reset();
     this.livePaceWindows = new Set();
     const mime = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find((type) =>
       MediaRecorder.isTypeSupported(type),
