@@ -15,7 +15,7 @@ const nonnegative = z.number().finite().nonnegative();
 const clientReportSchema = z
   .object({
     status: z.enum(['idle', 'processing', 'complete', 'partial', 'failed']),
-    stages: z.partialRecord(z.enum(['audio', 'video', 'combined']), reviewSchema),
+    stages: z.partialRecord(z.enum(['audio', 'video', 'combined', 'memory']), reviewSchema),
     error: z.string().nullable().optional(),
     transcript: z.string().optional(),
     cleanupWarning: z.string().optional(),

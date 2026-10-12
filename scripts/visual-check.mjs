@@ -100,7 +100,16 @@ try {
       json: complete
         ? {
             status: 'complete',
-            stages: { audio: stage, video: stage, combined: stage },
+            stages: {
+              audio: stage,
+              video: stage,
+              combined: stage,
+              memory: {
+                ...stage,
+                summary:
+                  'You kept the main habit idea. Include the concrete learning example in your next test.',
+              },
+            },
             transcript: 'A small habit made it easier to start.',
             evidence: [{ id: 'pause-1', category: 'pause', startMs: 400, endMs: 700 }],
             score: {
@@ -146,6 +155,25 @@ try {
   await page.getByRole('button', { name: 'Bring it together', exact: true }).click();
   await capture('combined-desktop');
   await capture('combined-mobile', true);
+  await page.getByRole('button', { name: 'New practice' }).click();
+  await page.getByRole('radio', { name: 'Memorization test' }).check();
+  await capture('memorization-prepare-desktop');
+  await capture('memorization-prepare-mobile', true);
+  await page.getByRole('button', { name: 'Set up my recording' }).click();
+  await page.locator('#consent').check();
+  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.getByRole('button', { name: 'Start memorizing' }).click();
+  await page.getByRole('timer').waitFor();
+  await capture('memorization-study-desktop');
+  await capture('memorization-study-mobile', true);
+  await page.getByRole('button', { name: 'I’m ready · begin test' }).click();
+  await page.getByRole('button', { name: 'Finish practice' }).waitFor();
+  await capture('memorization-test-desktop');
+  await capture('memorization-test-mobile', true);
+  await page.getByRole('button', { name: 'Finish practice' }).click();
+  await page.getByRole('heading', { name: 'What stayed with you?' }).waitFor();
+  await capture('memorization-review-desktop');
+  await capture('memorization-review-mobile', true);
   await page.getByRole('button', { name: 'New practice' }).click();
   await page.route('**/api/scripts', (route) =>
     route.fulfill({

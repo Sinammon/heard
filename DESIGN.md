@@ -6,14 +6,11 @@ welcoming and enough restraint to keep attention on the user's talk.
 
 ## Information architecture
 
-- **Home** (`#home`): a left-aligned mark, one promise, one topic launcher, and a three-step overview. No testimonials or invented results.
-- **Our approach** (`#about`): preparation, observable feedback, evidence, plain-language privacy, the illustrative review explorer, and FAQ.
-- **Studio** (`#studio`): three progress stages — Prepare, Practice, Review. Preparation offers manual
-  writing and Gemini drafting. Practice includes device selection, seated/standing posture,
-  optional calibration, required AI consent, adaptive talking-point cards after a first read-through, and recording. Review has Listen, Watch, and Reflect
-  modes for audio-only, muted video, and combined playback with coaching.
+Home (`#home`), Our approach (`#about`), and Studio (`#studio`) are separate routed pages with shared sticky navigation. Home keeps the bare orange mark on the left, a brief promise, one topic launcher, a review explorer, and essential FAQ. Privacy detail lives on Our approach and at the point of consent.
 
-Home, approach, and studio are separate visible pages with sticky hash navigation and browser-history support. The studio mount preserves draft, setup, and review state. Leaving active recording stops the take; leaving memorization cancels its countdown. The old draft storage key is retained for existing users.
+Studio is a focused Prepare → Practice → Review environment. A shared registry defines Free practice and Memorization test. A timed test studies a manual or generated script for 1–30 minutes, then automatically records with only AI key points visible. Early start, cancel, retry, and device failure states are explicit. Recall feedback compares the transcript with the source script separately from delivery reviews and deterministic scoring.
+
+Hash navigation preserves drafts, preferences, and completed reviews. Setup releases devices on leaving the Studio; active memorization, recording, and busy actions require completion or cancellation first. The old draft storage key remains for existing users. `version-2` preserves the previous release. Development was isolated on `version-3` before the requested merge into `main`.
 
 ## Identity
 
@@ -37,7 +34,8 @@ quiet border. Panels use 1px structural borders, 10px corners, and generous inte
 are no gradients or heavy shadows. Phosphor Bold SVG icons are bundled individually.
 
 The script editor is the largest preparation surface. Guidance is secondary and removed on narrow
-screens. Setup puts required AI consent before the mirrored camera and optional posture calibration. A confirmed read-through or first recorded take creates 3–8 AI talking-point cards; the next take shows cards with the full script available in a disclosure. Guided practice keeps the full script available. Memorization test prepares AI key points before a configurable 1–30 minute countdown; its speaking test hides the script and offers only 3–8 idea cues. Recall feedback appears in the audio review, accepting paraphrases. Recording puts Finish practice next to the timer. Reviews keep playback, measured data, evidence, and feedback together.
+screens. Setup puts required AI consent before the mirrored camera and optional posture calibration. Calibration rejects unstable samples, corrects image aspect ratio, and uses torso evidence when hips are visible. Smoothed sustained warnings and recovery hysteresis avoid flicker; seated upper-body-only tracking is labeled. A confirmed read-through or first recorded take creates 3–8 AI talking-point cards; the next take shows cards with the full script available in a disclosure. Recording puts Finish
+practice next to the timer. Reviews keep playback, measured data, evidence, and feedback together.
 Unavailable measurements stay explicit; illustrations never masquerade as live results.
 
 ## Interaction and accessibility
@@ -54,5 +52,5 @@ Unavailable measurements stay explicit; illustrations never masquerade as live r
 
 ## Scope
 
-The redesign adds dedicated pages, practice modes, recall feedback, and more stable posture tracking. It reuses the bounded, consent-checked `/api/flashcards` route and requires configured AI for session creation. Posture geometry accounts for image aspect ratio; calibration rejects unstable observations and feedback uses temporal smoothing. Webcam alignment remains approximate, requiring real-device validation. The scoring formula, recording limits, quota rules, session ownership, and deployed backend lifecycle remain unchanged. The original version is preserved on `main`; see README for restoration instructions.
+This redesign changes branding, layout, navigation presentation, and copy. It retains the bounded, consent-checked `/api/flashcards` route and required AI consent. Sessions accept validated mode/reference data for recall review. Scoring, recording limits, quota rules, session ownership, and deployed backend lifecycle remain unchanged.
 No public deployment is performed by the redesign.

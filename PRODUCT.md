@@ -18,8 +18,7 @@ video, watch without audio, then combine the observations into one practical nex
 
 ## Capabilities and Constraints
 
-Existing stack: JavaScript, Vite, Fastify, Gemini, MediaPipe, and Pitchy. Keep the existing stack and
-hash navigation. Full video stays in the browser. Cloud review uses audio and up to twenty resized
+Existing stack: JavaScript, Vite, Fastify, Gemini, MediaPipe, and Pitchy. Keep the existing stack and hash-routed Home, Our approach, and dedicated Studio pages. Free practice and timed Memorization test share the preparation and recording workflow. Full video stays in the browser. Cloud review uses audio and up to twenty resized
 images with required explicit consent. Every recording requests AI analysis; practice is unavailable without a configured AI service. After a read-through, Gemini summarizes the script into adaptive talking-point cards. Scores come from a deterministic rubric, never an AI opinion. Missing
 evidence produces an unavailable score. Camera observations cannot measure internal confidence.
 
@@ -30,7 +29,7 @@ existing product scope. AI requires a server-side Gemini key and project quota.
 
 ## Practice experience
 
-Home, Our approach, and Studio are separate pages. Home keeps a brief message, a left-aligned mark, and a clear Studio action. Studio offers Guided practice and a timed Memorization test. The test prepares AI key points, allows 1–30 minutes to study, automatically starts recording, and hides the full script. Audio review compares delivery with the reference script; visual review stays isolated from speech. Short movements do not immediately trigger posture warnings. Alignment estimates remain approximate and need real-device validation. The previous version remains accessible on `main`.
+Home, Our approach, and Studio are separate pages. Home keeps a brief message, a left-aligned mark, and a clear Studio action. Studio offers Free practice and a timed Memorization test. The test prepares AI key points, allows 1–30 minutes to study, automatically starts recording, and hides the full script. A separate recall review compares the transcript with the reference script; visual review stays isolated from speech. Short movements do not immediately trigger posture warnings. Alignment estimates remain approximate and need real-device validation. The previous version remains accessible on `version-2`.
 
 ## Brand Commitments
 
@@ -48,6 +47,9 @@ accuracy benchmarks, or commercial claims have been supplied. Any demonstration 
 ## Product Principles
 
 - Help people choose one useful thing to practice next.
+- Prefer concise Home messaging and a focused Studio.
+- Assess memorization by retained meaning, with transcription limitations explicit.
+- Treat webcam posture as observable, approximate alignment; avoid warnings from brief natural movement.
 - Explain what observations can and cannot establish.
 - Preserve local recordings when AI, tracking, or network requests fail.
 - Make privacy choices understandable before media leaves the browser.

@@ -1,10 +1,4 @@
-import {
-  calibrate,
-  measurements,
-  deviation,
-  EpisodeTracker,
-  PostureFilter,
-} from '../shared/posture.js';
+import { calibrate, measurements, PostureDetector, EpisodeTracker } from '../shared/posture.js';
 import { provisionalScore, isFiller } from '../shared/scoring.js';
 
 export function wavFromChunks(chunks) {
@@ -51,8 +45,8 @@ export class PracticeMedia {
     this.events = [];
     this.pcm = [];
     this.frames = [];
-    this.episodes = new EpisodeTracker(0, 0);
-    this.postureFilter = new PostureFilter();
+    this.episodes = new EpisodeTracker({ sustainMs: 0, recoveryMs: 0 });
+    this.postureDetector = new PostureDetector();
     this.turns = [];
     this.seenTurns = new Set();
     this.lastPose = null;
@@ -78,13 +72,10 @@ export class PracticeMedia {
     await video.play();
     for (const track of this.stream.getTracks())
       track.addEventListener('ended', () => {
-        this.ready = false;
-        this.baseline = null;
-        this.callbacks.onInterrupt?.(
-          this.running
-            ? 'A recording device disconnected. Your recording has been preserved.'
-            : 'A recording device disconnected. Reconnect your camera and microphone.',
-        );
+        if (this.ready || this.running)
+          this.callbacks.onInterrupt?.(
+            'A recording device disconnected. Your recording has been preserved.',
+          );
       });
     this.context = new AudioContext({ sampleRate: 16000 });
     await this.context.resume();
@@ -156,7 +147,7 @@ export class PracticeMedia {
       if (data.type === 'error') this.callbacks.onLive?.(data.message);
       if (data.type === 'pose') {
         this.poseBusy = false;
-        const m = measurements(data.landmarks, this.mode, data.aspect);
+        const m = measurements(data.landmarks, this.mode, data.aspectRatio, data.worldLandmarks);
         if (this.calibrating) {
           this.calibrationFrames++;
           if (m) {
@@ -165,10 +156,9 @@ export class PracticeMedia {
             this.calibrationSamples.push(m);
           }
         }
-        const posture = this.postureFilter.update(
-          deviation(m, this.baseline, this.mode),
-          data.time,
-        );
+        const posture = this.postureDetector.update(m, this.baseline, this.mode, data.time);
+        this.lastPoseTime = performance.now();
+        this.poseStale = false;
         this.lastPose = { ...posture, landmarks: data.landmarks };
         if (this.running) {
           const sample = {
@@ -195,14 +185,29 @@ export class PracticeMedia {
       this.poseReady = false;
       this.poseBusy = false;
       this.poseWorker.terminate();
-      this.postureFilter.reset();
+      this.postureDetector.reset();
       this.callbacks.onPose?.({
         valid: false,
         deviation: false,
         landmarks: null,
-        hint: 'Posture tracking stopped — reconnect devices to retry',
+        hint: 'Posture tracking stopped · reconnect devices to retry',
       });
       this.episodes.close(this.episodes.lastValid);
+    }
+    if (this.baseline && time - (this.lastPoseTime || time) > 1000 && !this.poseStale) {
+      this.poseStale = true;
+      this.postureDetector.reset();
+      this.episodes.update({
+        timeMs: Math.max(0, time - (this.startedAt || time)),
+        valid: false,
+        deviation: false,
+      });
+      this.callbacks.onPose?.({
+        valid: false,
+        deviation: false,
+        hint: 'Tracking paused · waiting for camera frames',
+        landmarks: null,
+      });
     }
     if (
       this.poseReady &&
@@ -238,7 +243,7 @@ export class PracticeMedia {
     if (!this.poseReady) throw new Error('Wait for the posture model to load.');
     this.mode = mode;
     this.baseline = null;
-    this.postureFilter.reset();
+    this.postureDetector.reset();
     this.calibrationSamples = [];
     this.calibrationFrames = 0;
     this.calibrationFirst = null;
@@ -256,7 +261,6 @@ export class PracticeMedia {
           'Tracking was interrupted. Keep your head and shoulders visible for the full five seconds and try again.',
         );
       this.baseline = calibrate(this.calibrationSamples);
-      this.postureFilter.reset();
       const sorted = this.noiseSamples.sort((a, b) => a - b);
       this.noise = Math.min(0.03, sorted[Math.floor(sorted.length / 2)] || 0.008);
     } finally {
@@ -321,6 +325,7 @@ export class PracticeMedia {
     this.turns = [];
     this.seenTurns.clear();
     this.episodes.reset();
+    this.postureDetector.reset();
     this.livePaceWindows = new Set();
     const mime = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find((type) =>
       MediaRecorder.isTypeSupported(type),

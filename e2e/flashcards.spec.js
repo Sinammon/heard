@@ -75,9 +75,9 @@ test('quota failure can retry and card updates leave camera preview mounted', as
     .getByRole('link', { name: 'Home', exact: true })
     .click();
   await page.getByRole('link', { name: 'Open studio', exact: false }).first().click();
-  expect(await page.locator('#preview').evaluate((el) => el === window.previewBeforeCards)).toBe(
-    true,
-  );
+  expect(await page.evaluate(() => window.previewBeforeCards.srcObject.active)).toBe(false);
+  await expect(page.locator('.flashcard')).toHaveCount(3);
+  await expect(page.getByRole('button', { name: 'Start practice' })).toBeDisabled();
 });
 
 test('pending cards are canceled when the script changes', async ({ page }) => {

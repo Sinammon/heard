@@ -30,8 +30,9 @@ self.onmessage = async ({ data }) => {
       self.postMessage({
         type: 'pose',
         landmarks: result.landmarks[0] || null,
+        worldLandmarks: result.worldLandmarks[0] || null,
+        aspectRatio: data.bitmap.width / data.bitmap.height,
         time: data.time,
-        aspect: data.bitmap.width / data.bitmap.height,
       });
     } catch {
       self.postMessage({ type: 'pose', landmarks: null, time: data.time });

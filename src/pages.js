@@ -31,7 +31,7 @@ export function demoView(phase = 'audio') {
 }
 
 function navigation(page) {
-  return `<a class="skip-link" href="#page-content">Skip to content</a><header class="site-header"><a class="brand" href="#home" aria-label="Heard home">${brand}</a><nav class="site-nav" aria-label="Main navigation"><a href="#home" ${page === 'home' ? 'aria-current="page"' : ''}>Home</a><a href="#how-it-works">How it works</a><a href="#about" ${page === 'about' ? 'aria-current="page"' : ''}>Our approach</a></nav><a class="button primary nav-cta" href="#studio" ${page === 'studio' ? 'aria-current="page"' : ''}>Open studio ${icon('arrow')}</a></header>`;
+  return `<a class="skip-link" href="#page-content">Skip to content</a><header class="site-header"><a class="brand" href="#home" aria-label="Heard home">${brand}</a><nav class="site-nav" aria-label="Main navigation"><a href="#home" ${page === 'home' ? 'aria-current="page"' : ''}>Home</a><a href="#how-it-works" data-home-link>How it works</a><a href="#about" ${page === 'about' ? 'aria-current="page"' : ''}>Our approach</a></nav><a class="button primary nav-cta" href="#studio" ${page === 'studio' ? 'aria-current="page"' : ''}>Open studio ${icon('arrow')}</a></header>`;
 }
 
 function footer() {
@@ -39,35 +39,22 @@ function footer() {
 }
 
 function home() {
-  return `<section class="landing-hero" id="home"><div class="hero-logo" aria-hidden="true">${mark}</div><div class="hero-copy"><p class="eyebrow">A space to find your voice</p><h1>A little practice.<br>A <em>clearer</em> voice.</h1><p class="hero-description">Practice your delivery. Remember what matters.</p><form id="practice-launcher" class="practice-launcher"><label for="practice-topic">What are you practicing for?</label><div class="launcher-input"><input id="practice-topic" maxlength="400" placeholder="A presentation, an introduction, an idea…"><button class="button primary" id="enter" type="submit">Enter studio ${icon('arrow')}</button></div><div class="occasion-options" aria-label="Choose a practice occasion"><span>Try</span><button type="button" data-topic="Introduce an idea to my class">Class presentation</button><button type="button" data-topic="Introduce myself to someone new">An introduction</button><button type="button" data-topic="Explain something I care about">An idea</button></div></form><div class="hero-baseline"><span>${icon('clock')}Up to 5 minutes</span><span>${icon('shield')}No account needed</span></div></div></section><section class="journey-strip" aria-label="How to practice">${[
-    ['01', 'Prepare', 'Your script, or a draft with AI.', 'edit'],
-    ['02', 'Practice', 'A camera. A microphone. Your pace.', 'mic'],
-    ['03', 'Review', 'Listen, watch, and choose a next step.', 'headphones'],
-  ]
-    .map(
-      ([n, title, text, ico]) =>
-        `<div><span class="journey-number">${n}</span><div><h2>${title}</h2><p>${text}</p></div>${icon(ico)}</div>`,
-    )
-    .join('')}</section>`;
-}
-
-function explore() {
-  return `<section class="how-section" id="how-it-works"><div class="section-heading"><div><p class="eyebrow">A fresh perspective</p><h2>Less to think about.<br>More to learn from.</h2></div><p>One recording. Three ways to notice what works.</p></div><div class="experience"><div class="experience-toolbar"><span class="content-label">Explore your review</span><div role="tablist" aria-label="Explore review stages">${['audio', 'video', 'combined'].map((phase, i) => `<button role="tab" id="demo-tab-${phase}" data-demo="${phase}" aria-controls="demo-panel" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${icon(examples[phase].icon)}${phase === 'audio' ? 'Listen' : phase === 'video' ? 'Watch' : 'Reflect'}</button>`).join('')}</div></div><div id="demo-panel" class="demo-panel" role="tabpanel" aria-labelledby="demo-tab-audio" tabindex="0">${demoView()}</div></div><a class="text-link how-link" href="#studio">Try it with your own words ${icon('arrow')}</a></section><section class="faq-section"><div><p class="eyebrow">Good to know</p><h2>Your practice.<br>A clear next step.</h2><p>Full video stays on your device.</p><a class="text-link" href="#about">Our approach & privacy ${icon('external')}</a></div><div class="faq-list">${[
+  return `<section class="landing-hero" id="home"><div class="hero-logo" aria-hidden="true">${mark}</div><div class="hero-copy"><p class="eyebrow">Your speaking studio</p><h1>A little practice.<br>A <em>clearer</em> voice.</h1><p class="hero-description">Rehearse your next talk. Find one thing to improve.</p><form id="practice-launcher" class="practice-launcher"><label for="practice-topic">What are you practicing for?</label><div class="launcher-input"><input id="practice-topic" maxlength="400" placeholder="A presentation, an introduction, an idea…"><button class="button primary" id="enter" type="submit">Enter studio ${icon('arrow')}</button></div><div class="occasion-options"><button type="button" data-topic="Introduce an idea to my class">Class presentation</button><button type="button" data-topic="Introduce myself to someone new">An introduction</button><button type="button" data-topic="Explain something I care about">An idea</button></div></form><div class="hero-baseline"><span>${icon('clock')}Up to 5 minutes</span><span>${icon('shield')}Video stays on your device</span></div></div></section><section class="how-section" id="how-it-works"><div class="section-heading"><div><p class="eyebrow">One take. Three perspectives.</p><h2>Listen. Watch. Reflect.</h2></div></div><div class="experience"><div class="experience-toolbar"><span class="content-label">Explore your review</span><div role="tablist" aria-label="Explore review stages">${['audio', 'video', 'combined'].map((phase, i) => `<button role="tab" id="demo-tab-${phase}" data-demo="${phase}" aria-controls="demo-panel" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${icon(examples[phase].icon)}${phase === 'audio' ? 'Listen' : phase === 'video' ? 'Watch' : 'Reflect'}</button>`).join('')}</div></div><div id="demo-panel" class="demo-panel" role="tabpanel" aria-labelledby="demo-tab-audio" tabindex="0">${demoView()}</div></div></section><section class="faq-section"><div><p class="eyebrow">Before you start</p><h2>A few essentials.</h2></div><div class="faq-list">${[
     [
       'What do I need?',
-      'A camera, microphone, and desktop Chrome or Edge. Bring your own script or draft one with AI. Each recording can last up to five minutes. You can prepare a script on mobile; mobile recording is not yet validated.',
+      'A camera, microphone, and desktop Chrome or Edge. Write a script or generate an AI draft. Choose free practice or a timed memorization test.',
     ],
     [
       'Is AI review required?',
-      'Every recorded practice includes AI review. Accept the cloud-processing disclosure before enabling devices or recording. A configured Gemini service and available quota are required; you can still write a script while AI is unavailable.',
+      'Yes. Consent and an available Gemini service are required before recording. You can always prepare your script.',
     ],
     [
       'What is shared with AI?',
-      'With your required consent: your script for talking-point cards, audio, and up to 20 resized still frames. Full video stays in your browser. Google’s free service may use shared content for product improvement and human review. Use non-sensitive material.',
+      'Your script, audio, and up to 20 resized still frames. Full video stays in your browser. Use non-sensitive practice material. Read the data terms before accepting consent in the Studio.',
     ],
     [
       'Does Heard measure confidence?',
-      'No. A webcam cannot measure how confident you feel. Feedback covers observable pace, pauses, and posture. An overall score needs 30 seconds of delivery, 50 timestamped words, and enough usable tracking. Missing evidence means no score.',
+      'A webcam cannot measure how confident you feel. Feedback covers observable delivery. Missing or insufficient evidence means no overall score.',
     ],
   ]
     .map(([q, a]) => `<details><summary>${q}${icon('down')}</summary><p>${a}</p></details>`)
@@ -98,9 +85,9 @@ function about() {
     )
     .join(
       '',
-    )}</section><section class="privacy-section"><div><p class="eyebrow">Privacy, plainly</p><h2>You choose<br>what leaves your device.</h2></div><div><article><h3>Video stays local</h3><p>Write your script locally. Full video and playback stay in your browser. Drafts stay in this tab. Recordings are cleared when you reset or close the page.</p></article><article><h3>Consent before practice</h3><p>Every practice includes AI review and requires your consent. AI drafting sends your topic and audience to Gemini. Talking-point cards and memorization feedback share your script; recording review shares audio and up to 20 resized still frames. Full video is never uploaded.</p></article><article><h3>Know the trade-off</h3><p>Google’s free service may use content for product improvement and human review. Use non-sensitive practice material. Uploaded audio is deleted after processing; provider deletion failures are shown.</p><a class="text-link" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer">Read Gemini’s data terms ${icon('external')}</a></article></div></section><section class="about-cta"><h2>Give your next talk<br>a practice run.</h2><a class="button primary" href="#studio">Open studio ${icon('arrow')}</a></section>`;
+    )}</section><section class="privacy-section"><div><p class="eyebrow">Privacy, plainly</p><h2>You choose<br>what leaves your device.</h2></div><div><article><h3>Video stays local</h3><p>Write your script locally. Full video and playback stay in your browser. Drafts stay in this tab. Recordings are cleared when you reset or close the page.</p></article><article><h3>Consent before practice</h3><p>Every practice includes AI review and requires your consent. AI drafting sends your topic and audience to Gemini. Talking-point cards share your script; recording review shares audio and up to 20 resized still frames. Full video is never uploaded.</p></article><article><h3>Know the trade-off</h3><p>Google’s free service may use content for product improvement and human review. Use non-sensitive practice material. Uploaded audio is deleted after processing; provider deletion failures are shown.</p><a class="text-link" href="https://ai.google.dev/gemini-api/terms" target="_blank" rel="noopener noreferrer">Read Gemini’s data terms ${icon('external')}</a></article></div></section><section class="about-cta"><h2>Give your next talk<br>a practice run.</h2><a class="button primary" href="#studio">Open studio ${icon('arrow')}</a></section>`;
 }
 
 export function publicPage(page) {
-  return `<div class="public-site">${navigation(page)}<main id="page-content" tabindex="-1"><div data-page="home" ${page === 'home' ? '' : 'hidden'}>${home()}</div><div data-page="about" ${page === 'about' ? '' : 'hidden'}>${about()}${explore()}</div><section data-page="studio" ${page === 'studio' ? '' : 'hidden'} class="studio-section" id="studio" aria-label="Speaking studio"><div id="studio-content"></div></section></main>${footer()}</div>`;
+  return `<div class="public-site">${navigation(page)}<main id="page-content" tabindex="-1"><div id="home-page" ${page === 'home' ? '' : 'hidden'}>${home()}</div><div id="about-page" ${page === 'about' ? '' : 'hidden'}>${about()}</div><section class="studio-section" id="studio" aria-label="Speaking studio" ${page === 'studio' ? '' : 'hidden'}><div id="studio-content"></div></section></main>${footer()}</div>`;
 }

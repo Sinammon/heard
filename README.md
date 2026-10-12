@@ -1,6 +1,6 @@
 # Heard
 
-A speaking practice studio for students and everyday conversations, built with HTML, CSS, JavaScript, MediaPipe, Fastify, and Gemini. Practice a class presentation, introduction, or idea. Full video remains on the device. Every recorded practice requires explicit AI consent. Gemini receives the script for talking-point flashcards, plus audio and selected still frames for the three review stages.
+A speaking practice studio for students and everyday conversations, built with HTML, CSS, JavaScript, MediaPipe, Fastify, and Gemini. Practice a class presentation, introduction, or idea. Full video remains on the device. Choose free practice or a timed memorization test. Every recorded practice requires explicit AI consent. Gemini receives the script for talking-point flashcards, plus audio and selected still frames for the three review stages.
 
 ## Run locally
 
@@ -27,14 +27,6 @@ pnpm start
 
 Open http://localhost:3000. The build downloads the matching MediaPipe model if absent and bundles self-hosted fonts. The server serves the compiled frontend. Recording supports desktop Chrome and Edge, English, one speaker, five-minute recordings, and seated or standing calibration. The interface adapts to mobile and tablet; real-device mobile/Safari recording is not yet validated. Node service restarts lose temporary reports; the page's existing local playback remains usable.
 
-## Practice modes and preserved version
-
-The redesign lives on `feat/studio-redesign`. The previous working version remains on `main` at `55e99ac`. To run both side by side, create a separate worktree with `git worktree add ../stagecraft-original main` and install its dependencies. Use a separate port or stop the current server before starting that copy. No deployment is performed by this change.
-
-- **Guided practice:** use your full script or AI talking points while recording.
-- **Memorization test:** write or generate a script, choose 1–30 whole minutes, accept AI processing, and enable your devices. Begin memorization prepares 3 AI key points (up to 8 for longer or more complex scripts), then starts the countdown. Key-point failure blocks the timer and offers a retry. The camera and microphone remain ready, but recording starts only when the timer expires or you choose to begin early. The full script is removed from the speaking-test view. Cancel, leave the Studio, or switch browser tabs to return to setup without recording.
-- The Listen review compares the reference script with the final transcript for retained, omitted, or changed ideas, accepting paraphrases. Recall and delivery feedback use Gemini; there is no invented recall percentage and the deterministic speaking score is unchanged. A missing key, quota failure, or inadequate transcript remains an explicit unavailable/limited result. The reference script is sent only to the audio review; visual review receives no speech content.
-
 ## Gemini configuration
 
 `@google/genai` provides the Interactions API, Files API, and Live API. Defaults, configurable through `.env`:
@@ -52,7 +44,7 @@ Read your active request, token, and daily quotas in Google AI Studio, then set 
 Script preparation stays local unless you request an AI draft. Recording requires a configured server key and explicit cloud-processing consent during setup; there is no local-only recording mode. Consent is unchecked by default and is required before enabling devices or starting a practice. Every completed take automatically submits audio and selected frames for AI review. Google's unpaid-service terms permit product improvement and human review and instruct users not to submit sensitive, confidential, or personal information; regional exceptions apply. Evaluate https://ai.google.dev/gemini-api/terms before accepting identifiable recordings from real users. Application cleanup does not promise confidential or zero-retention processing by Google.
 
 - Combined video is never accepted by the backend. It stays in a browser Blob until reset or page close.
-- Talking-point flashcards share the script with Gemini after you confirm a first read-through, begin a memorization session, or finish the first recorded take. Gemini summarizes the essential ideas into 3 cards for simple scripts and up to 8 for longer or more complex ones. Cards stay in memory for another take; editing the script invalidates them. Loading, retry, cancellation, and unavailable states are explicit. Flashcard failure does not block recording or replace AI analysis.
+- Talking-point flashcards share the script with Gemini after you confirm a first read-through or finish the first recorded take. Gemini summarizes the essential ideas into 3 cards for simple scripts and up to 8 for longer or more complex ones. Cards stay in memory for another take; editing the script invalidates them. Loading, retry, cancellation, and unavailable states are explicit. Flashcard failure does not block recording or replace AI analysis.
 - Script drafts and topic preferences survive reload in this tab's sessionStorage. Recordings are not persisted. New practice clears the recording and session while keeping the script for another take.
 - Audio and at most 20 resized JPEG frames are submitted for analysis.
 - Uploaded Gemini audio is explicitly deleted in `finally`; failed deletion is disclosed. Gemini Files also have an automatic expiry.
@@ -71,15 +63,21 @@ The final rubric is deterministic and versioned as `v1` in `shared/scoring.js`:
 
 Factors are clamped to 0–1. F is `(fillers/minute - 1)/5`; R is the fraction of complete 20-second windows outside 110–180 WPM; P is silence exceeding three seconds divided by 15% of first-to-last-word delivery time; B is posture deviation time divided by 30% of valid tracked time. Leading/trailing silence is excluded. Missing timing, fewer than 50 words, less than 30 seconds of delivery, or less than 80% pose coverage produces no overall score.
 
-Pose tracking uses the Lite model in a CPU Web Worker, one inference in flight, 320-pixel-wide input, and adaptive 5–10 Hz sampling. Calibration takes five seconds. Standing requires visible hips and shoulders; both modes compare head lowering, excessive lateral head displacement, and shoulder tilt against the neutral baseline. Standing also compares torso lean. Image aspect ratio is corrected before geometry is measured. Cropped, non-finite, low-confidence (<0.7), side-on, and substantially reframed observations are excluded. Calibration requires a stable five-second interval with at least 20 valid observations, four seconds of valid coverage, and 80% valid frames. Live feedback and scoring share temporal smoothing, a two-second onset, and a one-second recovery with hysteresis. Tracking gaps reset the filter, and a stalled worker marks tracking unavailable. Webcam geometry is approximate and not an assessment of internal confidence. A front-facing webcam cannot directly measure spinal curvature or reliably distinguish every forward lean from head movement; head lowering is only a slouch cue. Baseline angles and thresholds require real-device validation with seated and standing users. Synthetic tests validate geometry, visibility, brief movement, sustained shifts, recovery, and lost tracking; they do not establish real-world detection accuracy.
+Pose tracking uses the Lite model in a CPU Web Worker, one inference in flight, 320-pixel-wide input, and adaptive 5–10 Hz sampling. Five-second calibration requires at least 20 usable observations and rejects unstable head/shoulder/torso geometry. Image coordinates are corrected for the camera aspect ratio; visible shoulders and hips supply torso lean and compression, and 3D world landmarks supply estimated forward lean. A head nod alone is not treated as back posture. Low-confidence, off-screen, and degenerate landmarks are excluded. Seated views without hips use a conservative upper-body approximation, explicitly labeled in the UI; they cannot establish back curvature or forward torso lean reliably.
+
+Measurements are smoothed over time. A deviation must persist for two seconds before becoming a warning, with a lower recovery threshold and one second of recovery to prevent flicker. Tracking gaps reset the detector and episode continuity. The mirrored preview and overlay preserve the complete camera frame and share letterboxing. Keep the camera fixed and include the hips for torso tracking. Webcam geometry is approximate and cannot establish spinal health or internal confidence. Thresholds still require validation with real users; synthetic tests verify geometry and state behavior, not real-device accuracy. Coordinate conventions follow the [MediaPipe Pose Landmarker guide](https://developers.google.com/edge/mediapipe/solutions/vision/pose_landmarker).
 
 Pitchy estimates pitch periodicity, not intelligibility. Audio level and pitch-variation measurements are descriptive and are not directly scored. Silence detection during recording is an RMS heuristic; final pauses use canonical word gaps. Rhetorical pauses and natural movement may be appropriate despite rubric deductions.
 
 ## Architecture
 
-The app is branded as **Heard**, with a warm neutral canvas, charcoal controls, an orange mark, and locally served Geist and Instrument Serif fonts. Home (`#home`), Our approach (`#about`), and Studio (`#studio`) are separate visible pages. The compact homepage focuses on a topic and entering the Studio; the review explorer and FAQ live on the approach page. Hash navigation and browser history retain the draft, setup, and completed review. Leaving an active test stops recording; leaving memorization cancels its countdown.
+The app is branded as **Heard**, with a warm neutral canvas, charcoal controls, an orange speech-and-waveform logo on the left of the hero, and self-hosted Geist and Instrument Serif fonts. Home (`#home`), Our approach (`#about`), and Studio (`#studio`) are separate hash-routed pages. Home has a compact topic launcher, optional review explorer, and essential FAQ. Studio keeps public content hidden for a focused **Prepare → Practice → Review** workflow. Drafts, mode preferences, and completed reviews survive page navigation; navigating home from setup releases devices. Active study, recording, and busy actions guard against accidental navigation. Switching browser tabs cancels study without starting a recording. Sticky navigation, readable typography, keyboard focus, and reduced-motion support remain available.
 
-`src/pages.js` defines public pages and the persistent Studio mount. `src/practice-modes.js` defines the mode registry; `src/studio-views.js` contains preparation and setup. `src/style.css` supplies existing shared styles and `src/studio.css` defines the dedicated page and mode layouts. The Studio retains Prepare → Practice → Review, with Listen, Watch, and Reflect reviews. Camera preview and overlay share the same mirrored crop; playback stays unmirrored. Drafts retain the legacy sessionStorage key, and dynamic content is escaped. Keyboard navigation, visible focus, responsive layouts, reduced motion, and reduced transparency are retained.
+Studio has two modes defined in `shared/practice.js`: **Free practice** retains script/flashcard-assisted rehearsal; **Memorization test** accepts a manual or AI-generated script and 1–30 study minutes. Consent and ready devices are required. Valid AI key points are prepared before the clock starts; failure offers retry and never starts a test without notes. The countdown uses a deadline to avoid timer drift, can be canceled or ended early, and automatically starts recording at expiry. The full script and live transcript are absent from the speaking-test UI; only 3–8 synthesized key points remain. Device/session failures stay visible and recoverable.
+
+The memorization session retains the consented reference script temporarily for a separate, transcript-only AI recall review. This compares meaning, retained ideas, and omissions rather than requiring word-for-word recitation. Recall feedback is qualitative, may be limited by transcription quality, and does not determine the delivery score. Audio-only and visual-only delivery reviews remain isolated. Combined coaching uses derived reports, including available recall feedback. Missing transcription produces unavailable recall feedback, never a fabricated memory assessment. Listen, Watch, and Reflect remain separate playback modes.
+
+`src/pages.js` contains routed public pages and the dedicated Studio mount; `src/studio-views.js` contains preparation and setup; `src/style.css` defines shared tokens and responsive components. `src/brand.js` defines the scalable mark and wordmark; `public/heard-mark.svg` and `public/favicon.svg` provide standalone assets. `src/draft.js` retains the legacy storage key so existing drafts survive the rebrand, `src/text.js` handles text utilities, and `src/icons.js` imports only the Phosphor assets used. Fonts and icons are served locally, with no external font or image requests. Keyboard focus, loading, errors, AI-unavailable states, reduced motion, and reduced transparency are supported. Product decisions live in `PRODUCT.md` and the design system in `DESIGN.md`.
 
 - `src/`: workflow UI, capture controller, posture worker, acoustic worker, safe API/chat rendering.
 - `shared/`: scoring and calibration/episode logic shared with the backend.
@@ -88,9 +86,9 @@ The app is branded as **Heard**, with a warm neutral canvas, charcoal controls, 
 
 Routes: `POST /api/scripts`, `POST /api/flashcards`, `POST /api/sessions`, `WS /api/sessions/:id/transcription`, `POST /api/sessions/:id/analyze`, `GET /api/sessions/:id/report`, `POST /api/sessions/:id/chat`, `DELETE /api/sessions/:id`.
 
-Analysis accepts multipart fields `payload` (validated JSON) and `audio` (mono 16 kHz PCM WAV). The payload contains recording duration, posture mode, valid/deviation pose samples, posture episodes, timestamped frames, and acoustic summaries. Duplicate processing/completed submissions return the existing job. Partial jobs retain completed stages and can retry failed stages with the local audio. Chat is NDJSON with `{text}`, `{done:true}`, or `{error}` records.
+Analysis accepts multipart fields `payload` (validated JSON) and `audio` (mono 16 kHz PCM WAV). The payload contains recording duration, posture mode, valid/deviation pose samples, posture episodes, timestamped frames, and acoustic summaries. Session creation accepts an optional validated `practice` object: `{mode:"free"}` (default) or `{mode:"memorization",script,minutes}`. The reference script is consented session data, never a visual-review input, and is cleared with the session. Duplicate processing/completed submissions return the existing job. Partial jobs retain completed stages and can retry failed stages with the local audio. Chat is NDJSON with `{text}`, `{done:true}`, or `{error}` records.
 
-Reports contain summary, strengths, improvements, limitations, and allowlisted evidence IDs. Audio review receives no visual data; video review receives no speech data; combined review receives derived reports and evidence. Gemini never determines the score. Dynamic text is escaped or assigned with `textContent`.
+Reports contain summary, strengths, improvements, limitations, and allowlisted evidence IDs. Memorization tests add `stages.memory` and its stage status; completed stages survive retry. Audio review receives no visual data; video review receives no speech data; combined review receives derived reports and evidence. Gemini never determines the score. Dynamic text is escaped or assigned with `textContent`.
 
 ## Checks
 
@@ -102,7 +100,7 @@ pnpm test:e2e
 pnpm test:visual
 ```
 
-Browser tests use an installed Chromium binary when available (set `PLAYWRIGHT_EXECUTABLE_PATH` to override it) with fake camera/microphone devices. They test browser MediaRecorder/AudioWorklet capture, playback after AI failure, mandatory consent, adaptive flashcards, muted video, reset, draft preservation, quota errors, keyboard access, and narrow layouts. Backend/provider tests validate malformed responses, timestamps, streaming completion, cancellation, and production origin controls with explicit doubles. Visual review fixtures are synthetic and do not prove live Gemini behavior. GitHub Actions runs unit tests, build, and browser tests.
+Browser tests use an installed Chromium binary when available (set `PLAYWRIGHT_EXECUTABLE_PATH` to override it) with fake camera/microphone devices. They test browser MediaRecorder/AudioWorklet capture, playback after AI failure, mandatory consent, adaptive flashcards, countdown expiry/early start/cancellation, hidden-script tests, recall feedback, posture transitions with known landmarks, muted video, reset, draft preservation, quota errors, keyboard access, and narrow layouts. Backend/provider tests validate malformed responses, timestamps, streaming completion, cancellation, and production origin controls with explicit doubles. Visual review fixtures are synthetic and do not prove live Gemini behavior. GitHub Actions runs unit tests, build, and browser tests.
 
 For the separate live provider check, configure the server-side key and set `AI_TEST_AUDIO_PATH` to a non-sensitive mono 16 kHz, 16-bit PCM WAV. Optionally set `AI_TEST_FRAME_PATH` to a non-sensitive JPEG. Run `pnpm test:ai`. This sends the test material to Gemini and checks script generation, multipart analysis, timestamped transcription, all review stages, file cleanup, and streamed chat. It exits unsuccessfully if credentials or the fixture are missing; it never substitutes fake output. Live transcription and real-device calibration require their own manual checks.
 
@@ -120,3 +118,16 @@ docker run --env-file .env -e HOST=0.0.0.0 -p 3000:3000 heard
 ```
 
 Do not scale to multiple instances without shared sessions, a distributed quota limiter, and durable cancellable jobs. Accounts, persistent cloud video, history, and mobile/Safari recording are outside this MVP.
+
+## Preserved versions
+
+The previous release remains at commit `55e99ac` on `version-2`. The redesign was developed on `version-3` and merged into `main` on request. Deployment must still be verified separately. To inspect or run the previous release without touching the current checkout, create a sibling worktree from a clean repository:
+
+```sh
+git worktree add ../heard-version-2 version-2
+cd ../heard-version-2
+pnpm install
+pnpm dev
+```
+
+Stop the other local dev server first, or use separate ports. Configure the worktree's own ignored `.env` if AI practice is needed. Do not copy credentials into tracked example files.

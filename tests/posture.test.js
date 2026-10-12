@@ -3,91 +3,110 @@ import {
   measurements,
   calibrate,
   deviation,
-  PostureFilter,
+  PostureDetector,
   EpisodeTracker,
 } from '../shared/posture.js';
 
-function pose(aspect = 1) {
-  const points = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, visibility: 1 }));
-  const set = (i, x, y) => Object.assign(points[i], { x: 0.5 + x / aspect, y });
-  set(0, 0, 0.25);
-  set(11, -0.15, 0.4);
-  set(12, 0.15, 0.4);
-  set(23, -0.12, 0.75);
-  set(24, 0.12, 0.75);
+function pose({ aspect = 16 / 9, tilt = 0, shiftX = 0, drop = 0, noseDrop = 0, hips = true } = {}) {
+  const points = Array(33).fill(null);
+  const p = (x, y) => ({ x, y: y * aspect, z: 0, visibility: 0.99, presence: 0.99 });
+  points[0] = p(0.5 + shiftX, 0.1 + drop + noseDrop);
+  points[11] = p(0.35 + shiftX, 0.22 + drop - Math.tan((tilt * Math.PI) / 180) * 0.15);
+  points[12] = p(0.65 + shiftX, 0.22 + drop + Math.tan((tilt * Math.PI) / 180) * 0.15);
+  if (hips) {
+    points[23] = p(0.4, 0.42);
+    points[24] = p(0.6, 0.42);
+  }
   return points;
 }
-describe('camera geometry and calibration', () => {
-  it('produces the same measurements at different camera aspect ratios', () => {
-    const square = measurements(pose(), 'standing', 1);
-    const wide = measurements(pose(16 / 9), 'standing', 16 / 9);
-    for (const key of Object.keys(square)) expect(wide[key]).toBeCloseTo(square[key]);
+function world(pitch = 0) {
+  const points = Array(33).fill(null);
+  const z = -Math.tan((pitch * Math.PI) / 180) * 0.5;
+  points[11] = { x: -0.2, y: -0.5, z };
+  points[12] = { x: 0.2, y: -0.5, z };
+  points[23] = { x: -0.15, y: 0, z: 0 };
+  points[24] = { x: 0.15, y: 0, z: 0 };
+  return points;
+}
+const measurement = (options = {}) =>
+  measurements(
+    pose(options),
+    options.hips === false ? 'seated' : 'standing',
+    options.aspect || 16 / 9,
+    world(options.pitch || 0),
+  );
+const baseline = (options = {}) =>
+  calibrate(Array.from({ length: 30 }, () => measurement(options)));
+
+describe('posture geometry and calibration', () => {
+  it('uses the same physical geometry in square and widescreen images', () => {
+    const square = measurement({ aspect: 1, tilt: 10 });
+    const wide = measurement({ aspect: 16 / 9, tilt: 10 });
+    expect(wide.shoulderAngle).toBeCloseTo(square.shoulderAngle, 6);
+    expect(wide.shoulderAngle).toBeCloseTo(10, 6);
+    expect(wide.headY).toBeCloseTo(square.headY, 6);
   });
-  it('excludes cropped, occluded, malformed and side-on observations', () => {
-    const points = pose();
-    points[11].visibility = 0.2;
-    expect(measurements(points, 'seated')).toBeNull();
-    points[11].visibility = 1;
-    points[0].y = NaN;
-    expect(measurements(points, 'seated')).toBeNull();
-    points[0].y = -0.1;
-    expect(measurements(points, 'seated')).toBeNull();
-    points[0].y = 0.25;
-    points[11].x = points[12].x;
-    expect(measurements(points, 'seated')).toBeNull();
-  });
-  it('rejects insufficient or moving calibration, accepts a stable baseline', () => {
-    const m = measurements(pose(), 'standing');
-    expect(() => calibrate([m])).toThrow(/visible/);
-    expect(() =>
-      calibrate(Array.from({ length: 30 }, (_, i) => ({ ...m, headY: i % 2 ? -0.2 : -0.8 }))),
-    ).toThrow(/movement/);
-    expect(calibrate(Array(30).fill(m))).toEqual(m);
-  });
-  it('detects head lowering in both positions and standing torso lean', () => {
-    const neutral = measurements(pose(), 'standing');
-    for (const mode of ['standing', 'seated']) {
-      expect(deviation(neutral, neutral, mode).deviation).toBe(false);
-      expect(deviation({ ...neutral, headY: neutral.headY + 0.3 }, neutral, mode).deviation).toBe(
-        true,
-      );
-      expect(deviation({ ...neutral, headX: neutral.headX + 0.1 }, neutral, mode).deviation).toBe(
-        false,
-      );
+  it('excludes low-confidence, offscreen, and malformed landmarks', () => {
+    for (const patch of [{ visibility: 0.6 }, { x: NaN }, { y: Infinity }, { x: 1.2 }]) {
+      const points = pose();
+      points[11] = { ...points[11], ...patch };
+      expect(measurements(points, 'standing', 16 / 9)).toBeNull();
     }
-    expect(deviation({ ...neutral, torsoAngle: 22 }, neutral, 'standing').deviation).toBe(true);
-    expect(deviation({ ...neutral, shoulderWidth: 0.1 }, neutral, 'standing').valid).toBe(false);
+    expect(measurements(pose({ hips: false }), 'standing', 16 / 9)).toBeNull();
+  });
+  it('rejects unstable calibration and too little evidence', () => {
+    expect(() => calibrate(Array(19).fill(measurement()))).toThrow(/visible/);
+    const moving = Array.from({ length: 30 }, (_, i) => measurement({ tilt: i % 2 ? 15 : -15 }));
+    expect(() => calibrate(moving)).toThrow(/moved too much/);
+  });
+  it('recognizes forward torso lean and slouch while ignoring an isolated head nod', () => {
+    const b = baseline();
+    expect(deviation(measurement({ pitch: 28 }), b, 'standing').deviation).toBe(true);
+    expect(deviation(measurement({ drop: 0.06 }), b, 'standing').deviation).toBe(true);
+    expect(deviation(measurement({ noseDrop: 0.09 }), b, 'standing').deviation).toBe(false);
+    expect(deviation(measurement(), b, 'standing').deviation).toBe(false);
+  });
+  it('uses a conservative seated fallback and never treats a nod as slouching', () => {
+    const b = baseline({ hips: false });
+    expect(deviation(measurement({ hips: false, noseDrop: 0.09 }), b, 'seated').deviation).toBe(
+      false,
+    );
+    expect(deviation(measurement({ hips: false, drop: 0.09 }), b, 'seated').deviation).toBe(true);
+    expect(deviation(measurement({ hips: false, shiftX: 0.15 }), b, 'seated').deviation).toBe(true);
+    expect(deviation(measurement({ hips: false }), baseline(), 'seated').valid).toBe(false);
   });
 });
-describe('stable posture feedback', () => {
-  const sample = (magnitude) => ({
-    valid: true,
-    deviation: magnitude > 1,
-    magnitude,
-    hint: 'Sustained lean',
-  });
-  it('ignores short movements, warns on sustained leaning, then recovers', () => {
-    const filter = new PostureFilter();
+describe('stable live posture feedback', () => {
+  it('ignores brief motion, confirms sustained lean, and clears after recovery', () => {
+    const detector = new PostureDetector();
+    const b = baseline();
     let result;
-    for (let t = 0; t <= 1000; t += 100) result = filter.update(sample(1.8), t);
+    for (let t = 0; t < 1000; t += 100)
+      result = detector.update(measurement({ pitch: 28 }), b, 'standing', t);
     expect(result.deviation).toBe(false);
-    for (let t = 1100; t <= 3000; t += 100) result = filter.update(sample(0), t);
+    for (let t = 1000; t <= 3000; t += 100)
+      result = detector.update(measurement(), b, 'standing', t);
     expect(result.deviation).toBe(false);
-    for (let t = 3100; t <= 6200; t += 100) result = filter.update(sample(1.8), t);
+    for (let t = 3100; t <= 6500; t += 100)
+      result = detector.update(measurement({ pitch: 28 }), b, 'standing', t);
     expect(result.deviation).toBe(true);
-    for (let t = 6300; t <= 8500; t += 100) result = filter.update(sample(0), t);
+    for (let t = 6600; t <= 8500; t += 100)
+      result = detector.update(measurement(), b, 'standing', t);
     expect(result.deviation).toBe(false);
   });
-  it('does not bridge tracking gaps or keep stale warnings after loss', () => {
-    const filter = new PostureFilter();
-    filter.update(sample(2), 0);
-    expect(filter.update(sample(2), 4000).deviation).toBe(false);
-    for (let t = 4100; t <= 6500; t += 100) filter.update(sample(2), t);
-    expect(filter.update({ valid: false }, 6600).deviation).toBe(false);
-    expect(filter.update(sample(2), 6700).deviation).toBe(false);
-    const tracker = new EpisodeTracker();
-    tracker.update({ valid: true, deviation: true, timeMs: 0 });
-    tracker.update({ valid: true, deviation: true, timeMs: 4000 });
-    expect(tracker.events).toHaveLength(0);
+  it('resets pending warnings on tracking loss or a gap in frames', () => {
+    const detector = new PostureDetector();
+    const b = baseline();
+    for (let t = 0; t < 1900; t += 100)
+      detector.update(measurement({ pitch: 28 }), b, 'standing', t);
+    expect(detector.update(null, b, 'standing', 1900).valid).toBe(false);
+    expect(detector.update(measurement({ pitch: 28 }), b, 'standing', 2000).deviation).toBe(false);
+    expect(detector.update(measurement({ pitch: 28 }), b, 'standing', 6000).deviation).toBe(false);
+  });
+  it('cannot turn sparse observations into sustained episodes', () => {
+    const episodes = new EpisodeTracker();
+    episodes.update({ timeMs: 0, valid: true, deviation: true });
+    episodes.update({ timeMs: 5000, valid: true, deviation: true });
+    expect(episodes.events).toHaveLength(0);
   });
 });
