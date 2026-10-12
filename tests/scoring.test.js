@@ -40,10 +40,13 @@ describe('practice rubric', () => {
       1,
     );
   });
-  it('does not award a perfect overall score with absent posture data', () => {
+  it('labels and normalizes a speech-only score without inventing posture evidence', () => {
     const score = finalScore({ words: words(), poseSamples: [], durationMs: 60000 });
-    expect(score.score).toBeNull();
-    expect(score.reasons.join(' ')).toMatch(/Posture/);
+    expect(score.score).toBe(100);
+    expect(score.partial).toBe(true);
+    expect(score.availableCategories).not.toContain('posture');
+    expect(score.metrics.postureDeviationPercent).toBeNull();
+    expect(score.warnings.join(' ')).toMatch(/Posture/);
   });
   it('rejects incomplete or invalid word timing coverage', () => {
     const input = words();
@@ -83,6 +86,39 @@ describe('practice rubric', () => {
       10000,
     );
     expect(result.coverage).toBeLessThan(0.1);
+  });
+  it.each([90, 140, 210])('measures and scores pace at %d WPM', (pace) => {
+    const speech = Array.from({ length: pace }, (_, i) => ({
+      text: 'word',
+      startMs: (i * 60000) / pace,
+      endMs: ((i + 1) * 60000) / pace,
+    }));
+    const full = finalScore({ words: speech, poseSamples: pose(), durationMs: 60000 });
+    const partial = finalScore({ words: speech, durationMs: 60000 });
+    expect(full.metrics.wpm).toBeCloseTo(pace);
+    expect(full.penalties.pace).toBe(pace === 140 ? 0 : 25);
+    expect(partial.score).toBe(Math.round(100 * (1 - full.penalties.pace / 70)));
+  });
+  it('deducts for consistently missing punctuation pauses and accepts natural flow', () => {
+    const flowing = words().map((w, i) => ({
+      ...w,
+      text: i % 10 === 9 ? 'word,' : 'word',
+      endMs: w.startMs + (i % 10 === 9 ? 250 : 450),
+    }));
+    const rushed = flowing.map((w, i) => ({
+      ...w,
+      endMs: i % 10 === 9 ? w.startMs + 490 : w.endMs,
+    }));
+    const natural = finalScore({ words: flowing, poseSamples: pose(), durationMs: 60000 });
+    const robotic = finalScore({ words: rushed, poseSamples: pose(), durationMs: 60000 });
+    expect(natural.metrics.naturalPunctuationPauses).toBe(11);
+    expect(natural.penalties.pause).toBe(0);
+    expect(robotic.penalties.pause).toBeGreaterThan(0);
+    expect(robotic.score).toBeLessThan(natural.score);
+  });
+  it('still withholds short or untimed speech even when partial scores are enabled', () => {
+    expect(finalScore({ words: words(10000), durationMs: 10000 }).score).toBeNull();
+    expect(finalScore({ durationMs: 60000 }).score).toBeNull();
   });
 });
 describe('posture episodes', () => {

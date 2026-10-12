@@ -1,6 +1,7 @@
 import { it, expect } from 'vitest';
 import { memorizationDuration } from '../src/practice-modes.js';
 import { analysisSchema } from '../server/validation.js';
+import { MAX_SCRIPT_CHARS } from '../shared/limits.js';
 
 it('accepts only bounded whole minutes in the UI and backend', () => {
   const base = {
@@ -26,7 +27,9 @@ it('accepts only bounded whole minutes in the UI and backend', () => {
     ).toBe(false);
   }
   expect(
-    analysisSchema.safeParse({ ...base, memorization: { script: 'a'.repeat(15001), minutes: 2 } })
-      .success,
+    analysisSchema.safeParse({
+      ...base,
+      memorization: { script: 'a'.repeat(MAX_SCRIPT_CHARS + 1), minutes: 2 },
+    }).success,
   ).toBe(false);
 });

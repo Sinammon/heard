@@ -1,7 +1,7 @@
 import { it, expect } from 'vitest';
 import { provisionalScore } from '../shared/scoring.js';
 
-it('withholds a live score until both speech and posture support it', () => {
+it('requires finalized speech and labels insufficient posture as partial', () => {
   const data = {
     events: [],
     turns: [{ text: Array(50).fill('word').join(' '), startMs: 0, endMs: 30000 }],
@@ -10,7 +10,10 @@ it('withholds a live score until both speech and posture support it', () => {
   };
   expect(provisionalScore(data).score).toBe(100);
   expect(provisionalScore({ ...data, turns: [] }).score).toBeNull();
-  expect(provisionalScore({ ...data, poseSamples: [] }).score).toBeNull();
+  expect(provisionalScore({ ...data, poseSamples: [] })).toMatchObject({
+    score: 100,
+    partial: true,
+  });
   expect(provisionalScore({ ...data, liveReady: false }).score).toBeNull();
   expect(
     provisionalScore({ ...data, turns: [{ ...data.turns[0], text: 'Too short' }] }).score,

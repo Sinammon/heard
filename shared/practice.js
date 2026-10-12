@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_SCRIPT_CHARS } from './limits.js';
 
 // Mode definitions drive preparation, setup, and review without adding parallel screen trees.
 export const PRACTICE_MODES = Object.freeze([
@@ -21,7 +22,7 @@ export const referenceScriptSchema = z
   .string()
   .trim()
   .min(3)
-  .max(15000)
+  .max(MAX_SCRIPT_CHARS)
   .refine((s) => s.split(/\s+/).length >= 3);
 export const sessionInputSchema = z.object({
   cloudConsent: z.literal(true),

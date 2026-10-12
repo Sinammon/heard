@@ -1,19 +1,32 @@
 import { z } from 'zod';
-const time = z.number().finite().min(0).max(300250);
+import {
+  MAX_EVIDENCE_MS,
+  MAX_POSE_SAMPLES,
+  MAX_PRACTICE_MINUTES,
+  MAX_SCRIPT_CHARS,
+} from '../shared/limits.js';
+const time = z.number().finite().min(0).max(MAX_EVIDENCE_MS);
 const interval = z.object({ startMs: time, endMs: time }).refine((v) => v.endMs >= v.startMs);
 export const analysisSchema = z
   .object({
-    durationMs: z.number().finite().min(1).max(300250),
+    durationMs: z.number().finite().min(1).max(MAX_EVIDENCE_MS),
     mode: z.enum(['seated', 'standing']),
     memorization: z
       .object({
-        script: z.string().trim().min(3).max(15000),
+        script: z.string().trim().min(3).max(MAX_SCRIPT_CHARS),
         minutes: z.number().int().min(1).max(30),
       })
       .optional(),
     poseSamples: z
-      .array(z.object({ timeMs: time, valid: z.boolean(), deviation: z.boolean() }))
-      .max(5000),
+      .array(
+        z.object({
+          timeMs: time,
+          valid: z.boolean(),
+          deviation: z.boolean(),
+          limited: z.boolean().optional(),
+        }),
+      )
+      .max(MAX_POSE_SAMPLES),
     postureEvents: z
       .array(interval.and(z.object({ id: z.string().max(80), category: z.literal('posture') })))
       .max(200),
@@ -50,7 +63,7 @@ export const analysisSchema = z
 export const scriptSchema = z.object({
   topic: z.string().trim().min(3).max(400),
   audience: z.string().trim().min(1).max(150),
-  duration: z.number().int().min(1).max(5),
+  duration: z.number().int().min(1).max(MAX_PRACTICE_MINUTES),
 });
 export const chatSchema = z.object({ message: z.string().trim().min(1).max(2000) });
 export const flashcardInputSchema = z.object({
@@ -58,7 +71,7 @@ export const flashcardInputSchema = z.object({
     .string()
     .trim()
     .min(3)
-    .max(15000)
+    .max(MAX_SCRIPT_CHARS)
     .refine((s) => s.split(/\s+/).length >= 3),
   cloudConsent: z.literal(true),
 });
@@ -97,6 +110,6 @@ export function validateWav(buffer, durationMs) {
   )
     throw new Error('Expected mono 16 kHz, 16-bit PCM audio.');
   const actualMs = dataSize / 32;
-  if (actualMs > 300250 || Math.abs(actualMs - durationMs) > 1000)
+  if (actualMs > MAX_EVIDENCE_MS || Math.abs(actualMs - durationMs) > 1000)
     throw new Error('Audio duration does not match this session.');
 }

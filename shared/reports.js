@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MAX_EVIDENCE_MS } from './limits.js';
 
 const observation = z.object({
   title: z.string().trim().min(1).max(140),
@@ -28,16 +29,19 @@ const clientReportSchema = z
           .object({
             id: z.string().max(80),
             category: z.enum(['filler', 'pause', 'posture', 'frame']),
-            startMs: nonnegative.max(300250),
-            endMs: nonnegative.max(300250),
+            startMs: nonnegative.max(MAX_EVIDENCE_MS),
+            endMs: nonnegative.max(MAX_EVIDENCE_MS),
           })
           .passthrough(),
       )
-      .max(1000)
+      .max(10000)
       .optional(),
     score: z
       .object({
         score: z.number().finite().min(0).max(100).nullable(),
+        partial: z.boolean().optional(),
+        availableCategories: z.array(z.enum(['filler', 'pace', 'pause', 'posture'])).optional(),
+        warnings: z.array(z.string()).optional(),
         reasons: z.array(z.string()),
         penalties: z.object({
           filler: nonnegative,
@@ -51,7 +55,7 @@ const clientReportSchema = z
             wpm: nonnegative,
             fillers: nonnegative,
             pauses: nonnegative,
-            postureDeviationPercent: nonnegative.max(100),
+            postureDeviationPercent: nonnegative.max(100).nullable(),
           })
           .passthrough(),
       })
@@ -59,7 +63,11 @@ const clientReportSchema = z
       .nullable()
       .optional(),
     visualMetrics: z
-      .object({ coverage: nonnegative.max(1), deviationPercent: nonnegative.max(100) })
+      .object({
+        coverage: nonnegative.max(1),
+        deviationPercent: nonnegative.max(100).nullable(),
+        upperBodyOnly: nonnegative.max(1).optional(),
+      })
       .optional(),
   })
   .passthrough();

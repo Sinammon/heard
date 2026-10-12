@@ -18,6 +18,12 @@ import {
 import { flashcardsSchema } from '../shared/flashcards.js';
 import { sessionInputSchema } from '../shared/practice.js';
 import { finalScore, postureCoverage } from '../shared/scoring.js';
+import {
+  MAX_AUDIO_BYTES,
+  MAX_RECORDING_MS,
+  MAX_EVIDENCE_MS,
+  MAX_ANALYSIS_FIELD_BYTES,
+} from '../shared/limits.js';
 
 export async function buildApp({
   store = new SessionStore(),
@@ -28,7 +34,13 @@ export async function buildApp({
   const app = Fastify({ logger: false, bodyLimit: 4 * 1024 * 1024 });
   await app.register(cookie);
   await app.register(multipart, {
-    limits: { files: 1, fields: 1, parts: 2, fileSize: 10000000, fieldSize: 4000000 },
+    limits: {
+      files: 1,
+      fields: 1,
+      parts: 2,
+      fileSize: MAX_AUDIO_BYTES,
+      fieldSize: MAX_ANALYSIS_FIELD_BYTES,
+    },
     throwFileSizeLimit: true,
   });
   const isVercel = Boolean(env.VERCEL);
@@ -102,7 +114,7 @@ export async function buildApp({
     if (error.statusCode === 413)
       return reply
         .code(413)
-        .send({ error: 'This recording is too large. Use a practice of five minutes or less.' });
+        .send({ error: 'This recording is too large. Use a practice of 15 minutes or less.' });
     reply.code(error.statusCode || 500).send({
       error:
         error.statusCode && error.statusCode < 500 ? error.message : publicProviderError(error),
@@ -116,7 +128,7 @@ export async function buildApp({
       transcription: provider.transcribeModel,
       live: provider.liveModel,
     },
-    maxDurationSeconds: 300,
+    maxDurationSeconds: MAX_RECORDING_MS / 1000,
   }));
   app.post('/api/scripts', async (request, reply) => {
     limited(request, 'scripts', 3);
@@ -276,6 +288,7 @@ export async function buildApp({
       if (!s.transcript) s.report.stageStatus.audio = 'skipped';
       const scoring = finalScore({
         words: s.transcript?.words || [],
+        transcript: s.transcript?.text || '',
         poseSamples: payload.poseSamples,
         durationMs: payload.durationMs,
       });
@@ -283,7 +296,8 @@ export async function buildApp({
       const visual = postureCoverage(payload.poseSamples, 0, payload.durationMs);
       s.report.visualMetrics = {
         coverage: visual.coverage,
-        deviationPercent: (100 * visual.deviationMs) / Math.max(1, visual.validMs),
+        deviationPercent: visual.validMs ? (100 * visual.deviationMs) / visual.validMs : null,
+        upperBodyOnly: visual.limitedMs / Math.max(1, visual.validMs),
       };
       const evidence = [
         ...scoring.events,
@@ -352,6 +366,7 @@ export async function buildApp({
                 mode: payload.mode,
                 trackingCoverage: s.report.visualMetrics.coverage,
                 deviationPercent: s.report.visualMetrics.deviationPercent,
+                upperBodyOnlyFraction: s.report.visualMetrics.upperBodyOnly,
                 evidence: evidence.filter((e) => ['posture', 'frame'].includes(e.category)),
                 frameTimesMs: payload.frames.map((f) => f.timeMs),
               },
@@ -508,7 +523,7 @@ export async function buildApp({
           cleanup();
           socket.close(1000, 'Session ended.');
         };
-        const timer = setTimeout(close, 310000);
+        const timer = setTimeout(close, MAX_RECORDING_MS + 10000);
         s.resources.add(close);
         socket.on('close', cleanup);
         socket.on('error', cleanup);
@@ -525,7 +540,7 @@ export async function buildApp({
               return;
             }
             audioMs += buffer.length / 32;
-            if (audioMs > 300250) {
+            if (audioMs > MAX_EVIDENCE_MS) {
               close();
               return;
             }

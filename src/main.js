@@ -6,6 +6,7 @@ import { PracticeMedia } from './media.js';
 import { escape, wordCount, readingTime } from './text.js';
 import { loadDraft, saveDraft } from './draft.js';
 import { scriptView as prepareView, setupView as sceneView } from './studio-views.js';
+import { MAX_SCRIPT_CHARS } from '../shared/limits.js';
 import { parseReport } from '../shared/reports.js';
 import { flashcardsSchema } from '../shared/flashcards.js';
 import { practiceMode, MemorizationClock } from '../shared/practice.js';
@@ -164,7 +165,7 @@ function cancelMemorization() {
 }
 
 function recordingView() {
-  return `${head('02 / Practice', 'All yours.', 'Focus on your message. Live measurements are provisional.')}<div class="recording-grid"><section class="recording-main">${previewMarkup(true)}<div class="recording-toolbar"><span class="timer"><i class="recording-dot" aria-hidden="true"></i><span id="timer">00:00</span><small>/ 05:00</small></span><button class="button stop" id="stop-recording">${icon('stop')}Finish practice</button></div>${state.practiceMode === 'memorization' ? `<div id="practice-cards">${cardsMarkup()}</div><p class="test-note">Memorization test · full script hidden. Explain the ideas in your own words.</p>` : `<div id="practice-cards">${cardsMarkup()}</div><details class="script-follow" id="recording-script" ${state.flashcards.length && state.cardScript === state.script ? '' : 'open'}><summary>${state.flashcards.length && state.cardScript === state.script ? 'Show full script' : 'First take · read your script'}</summary><p>${escape(state.script)}</p><p class="local-hint">Finish this take to receive AI talking-point cards for your next practice.</p></details>`}${state.practiceMode !== 'memorization' ? `<section class="panel" style="margin-top:20px;padding:22px"><h3>Live transcript</h3><div class="transcript" id="transcript" aria-live="off">${state.sessionId ? 'Your words will appear as the transcript is finalized.' : 'Live transcription is unavailable. Final AI review uses your recorded audio.'}</div></section>` : ''}</section><aside class="recording-aside"><div class="score-panel"><p class="content-label">Live practice score</p><div class="score-value"><strong id="live-score">—</strong><span id="score-state">Collecting evidence</span></div><div class="score-meter" aria-hidden="true"><span id="score-progress" style="transform:scaleX(0)"></span></div><p id="score-explanation">A score appears when speech and posture provide enough usable evidence.</p></div><div class="live-stats"><div class="stat-row"><span>Filler words</span><strong id="filler-count">—</strong></div><div class="stat-row"><span>Pace · words/min</span><strong id="pace-value">—</strong></div><div class="stat-row"><span>Posture</span><strong id="posture-value">${state.calibrated ? 'Tracking' : 'Unavailable'}</strong></div><div class="stat-row"><span>Voice activity</span><strong id="voice-value">Listening</strong></div></div><p class="inline-status" id="live-status" role="status" style="margin-top:16px">${state.sessionId ? 'Preparing live transcription…' : 'Final AI analysis is included in this practice.'}</p></aside></div>`;
+  return `${head('02 / Practice', 'All yours.', 'Focus on your message. Live measurements are provisional.')}<div class="recording-grid"><section class="recording-main">${previewMarkup(true)}<div class="recording-toolbar"><span class="timer"><i class="recording-dot" aria-hidden="true"></i><span id="timer">00:00</span><small>/ 15:00</small></span><button class="button stop" id="stop-recording">${icon('stop')}Finish practice</button></div>${state.practiceMode === 'memorization' ? `<div id="practice-cards">${cardsMarkup()}</div><p class="test-note">Memorization test · full script hidden. Explain the ideas in your own words.</p>` : `<div id="practice-cards">${cardsMarkup()}</div><details class="script-follow" id="recording-script" ${state.flashcards.length && state.cardScript === state.script ? '' : 'open'}><summary>${state.flashcards.length && state.cardScript === state.script ? 'Show full script' : 'First take · read your script'}</summary><p>${escape(state.script)}</p><p class="local-hint">Finish this take to receive AI talking-point cards for your next practice.</p></details>`}${state.practiceMode !== 'memorization' ? `<section class="panel" style="margin-top:20px;padding:22px"><h3>Live transcript</h3><div class="transcript" id="transcript" aria-live="off">${state.sessionId ? 'Your words will appear as the transcript is finalized.' : 'Live transcription is unavailable. Final AI review uses your recorded audio.'}</div></section>` : ''}</section><aside class="recording-aside"><div class="score-panel"><p class="content-label">Live practice score</p><div class="score-value"><strong id="live-score">—</strong><span id="score-state">Collecting evidence</span></div><div class="score-meter" aria-hidden="true"><span id="score-progress" style="transform:scaleX(0)"></span></div><p id="score-explanation">A score appears after 30 seconds and 50 finalized words. Limited posture tracking produces a partial score.</p></div><div class="live-stats"><div class="stat-row"><span>Filler words</span><strong id="filler-count">—</strong></div><div class="stat-row"><span>Pace · words/min</span><strong id="pace-value">—</strong></div><p class="inline-status" id="pace-feedback">Target 110–180 WPM · pace outside this range lowers your score.</p><div class="stat-row"><span>Posture</span><strong id="posture-value">${state.calibrated ? 'Tracking' : 'Unavailable'}</strong></div><div class="stat-row"><span>Voice activity</span><strong id="voice-value">Listening</strong></div></div><p class="inline-status" id="live-status" role="status" style="margin-top:16px">${state.sessionId ? 'Preparing live transcription…' : 'Final AI analysis is included in this practice.'}</p></aside></div>`;
 }
 function cardsMarkup() {
   if (state.cardsStatus === 'loading')
@@ -305,9 +306,17 @@ function feedbackMarkup(stage) {
       '',
     )}${report.limitations.length ? `<div class="limitations"><strong>Keep in mind</strong>${report.limitations.map((text) => `<p>${escape(text)}</p>`).join('')}</div>` : ''}</section>`;
 }
+function scoreExplanation(score) {
+  if (score?.score == null)
+    return score?.reasons?.join(' ') || 'At least 30 seconds and 50 timestamped words are needed.';
+  return score.partial
+    ? (score.warnings || []).join(' ') ||
+        'Partial score: posture is excluded. Speech categories are normalized to 100.'
+    : `Final analysis checks word timing and delivery length. ${(score.warnings || []).join(' ')}`;
+}
 function rubricMarkup() {
   const score = state.report?.score;
-  return `<details class="rubric"><summary>How scoring works</summary><p>This is a transparent practice rubric, not a confidence assessment. The final score normalizes your complete delivery and can differ from the live score.</p><ul><li>Fillers: up to 25 points; “um” and “uh” only.</li><li>Pace: up to 25 points for 20-second windows outside 110–180 words/min.</li><li>Long pauses: up to 20 points for internal silence exceeding 3 seconds.</li><li>Posture: up to 30 points for sustained deviation from your calibrated baseline.</li></ul>${score ? `<p>Final deductions: fillers ${score.penalties.filler.toFixed(1)}, pace ${score.penalties.pace.toFixed(1)}, pauses ${score.penalties.pause.toFixed(1)}, posture ${score.penalties.posture.toFixed(1)}. Posture coverage: ${Math.round(score.coverage.posture * 100)}%.</p>${score.reasons.length ? `<p>${escape(score.reasons.join(' '))}</p>` : ''}` : '<p>An overall score needs 30 seconds, 50 timestamped words, and enough usable tracking data.</p>'}</details>`;
+  return `<details class="rubric"><summary>How scoring works</summary><p>This is a transparent practice rubric, not a confidence assessment. The final score uses timed speech and can differ from the provisional live score.</p><ul><li>Fillers: up to 25 points for hesitation sounds and clearly bracketed filler phrases. Ambiguous literal uses are excluded where rules can distinguish them.</li><li>Pace: up to 25 points for 20-second windows outside 110–180 words/min.</li><li>Pauses: up to 20 points. Commas target 150–500 ms; sentence endings target 300–900 ms. Missing or overly long pauses increase deductions, as does internal silence beyond 3 seconds.</li><li>Posture: up to 30 points for sustained deviation from your calibrated baseline. Below 80% usable coverage, posture is excluded and the speech categories are normalized to 100 as a partial score.</li></ul>${score ? `<p>Category deductions${score.partial ? ' before partial-score normalization' : ''}: fillers ${score.penalties.filler.toFixed(1)}, pace ${score.penalties.pace.toFixed(1)}, pauses ${score.penalties.pause.toFixed(1)}, posture ${score.partial ? 'excluded' : score.penalties.posture.toFixed(1)}. Posture coverage: ${Math.round(score.coverage.posture * 100)}%.</p>${score.metrics.punctuationPauses != null ? `<p>${score.metrics.naturalPunctuationPauses} of ${score.metrics.punctuationPauses} measured punctuation pauses met the target range. Punctuation comes from your transcript; these ranges are coaching defaults.</p>` : ''}<p>${escape(scoreExplanation(score))}</p>` : '<p>A score needs 30 seconds, 50 timestamped words, and reliable speech timing. Missing posture permits a labeled partial score.</p>'}</details>`;
 }
 function chatMarkup() {
   return `<section class="chat"><div class="chat-head"><span class="icon-box">${icon('chat')}</span><div><h3>Your speaking coach</h3><p>A conversation grounded in this practice run.</p></div></div><div class="chat-messages" id="chat-messages" role="log" aria-label="Coaching conversation">${state.chat.length ? state.chat.map((m) => `<div class="chat-message ${m.role}" >${escape(m.text)}</div>`).join('') : '<div class="chat-message">Choose one habit to practice next. Ask about an observation, or request a short exercise.</div>'}</div><div class="chat-suggestions"><button data-question="What is the single most useful thing to practice next?">What should I practice next?</button><button data-question="Give me a two-minute exercise for my biggest improvement area.">Give me a short exercise</button></div><form class="chat-form" id="chat-form"><label class="sr-only" for="chat-input">Ask your speaking coach</label><input id="chat-input" maxlength="2000" placeholder="Ask about your delivery…" required ${!state.report?.stages?.combined ? 'disabled' : ''}><button class="button primary" id="chat-send" ${!state.report?.stages?.combined ? 'disabled' : ''}>Send</button></form></section>`;
@@ -346,13 +355,13 @@ function reviewView() {
     )
     .join(
       '',
-    )}</nav>${stage === 'combined' ? `<div class="final-score"><div><strong>${score?.score ?? '—'}</strong>${score?.score !== null && score?.score !== undefined ? '<small> / 100</small>' : ''}</div><div><h3>${score?.score !== null && score?.score !== undefined ? 'Your final practice score' : 'Overall score unavailable'}</h3><p>${score?.score !== null && score?.score !== undefined ? `Live score: ${recording.live.score ?? 'unavailable'}. Final analysis checks word timing and normalizes delivery length.` : escape(score?.reasons?.join(' ') || 'A completed, sufficiently supported analysis is needed.')}</p></div></div>` : ''}<div class="review-grid"><section>${stage === 'audio' ? `<div class="audio-stage"><p class="content-label">Your recording · audio only</p><div class="waveform" aria-hidden="true">${recording.waveform.map((level) => `<span style="--h:${4 + level * 60}px"></span>`).join('')}</div><audio id="review-player" controls src="${recording.audioUrl}" aria-label="Audio-only practice playback"></audio></div>` : `<div class="video-box"><video id="review-player" controls playsinline ${stage === 'video' ? 'muted' : ''} src="${recording.videoUrl}" aria-label="${stage === 'video' ? 'Muted visual' : 'Combined audio-video'} practice playback"></video></div>`}<p class="media-caption">${stage === 'video' ? 'Sound stays off in this stage. Playback is unmirrored, as your audience would see you.' : stage === 'audio' ? 'Audio-only playback from this browser.' : 'Full video is played from your browser; it has not been uploaded.'}</p><div class="metrics-grid">${stage === 'video' ? metric('Tracked delivery', visual ? `${Math.round(visual.coverage * 100)}%` : '—', 'Usable pose coverage') + metric('Alignment shift', visual ? `${Math.round(visual.deviationPercent)}%` : '—', 'Of tracked time') + metric('Practice mode', recording.payload.mode === 'seated' ? 'Seated' : 'Standing', 'Your selected setup') : metric('Delivery pace', metrics ? `${Math.round(metrics.wpm)}` : '—', 'Words per minute') + metric('Filler words', metrics ? metrics.fillers : '—', '“Um” and “uh”') + metric('Long pauses', metrics ? metrics.pauses : '—', 'Internal gaps over 3 s')}</div>${
+    )}</nav>${stage === 'combined' ? `<div class="final-score"><div><strong>${score?.score ?? '—'}</strong>${score?.score !== null && score?.score !== undefined ? '<small> / 100</small>' : ''}</div><div><h3>${score?.score !== null && score?.score !== undefined ? (score.partial ? 'Partial practice score' : 'Your final practice score') : 'Overall score unavailable'}</h3><p>${escape(scoreExplanation(score))}</p></div></div>` : ''}<div class="review-grid"><section>${stage === 'audio' ? `<div class="audio-stage"><p class="content-label">Your recording · audio only</p><div class="waveform" aria-hidden="true">${recording.waveform.map((level) => `<span style="--h:${4 + level * 60}px"></span>`).join('')}</div><audio id="review-player" controls src="${recording.audioUrl}" aria-label="Audio-only practice playback"></audio></div>` : `<div class="video-box"><video id="review-player" controls playsinline ${stage === 'video' ? 'muted' : ''} src="${recording.videoUrl}" aria-label="${stage === 'video' ? 'Muted visual' : 'Combined audio-video'} practice playback"></video></div>`}<p class="media-caption">${stage === 'video' ? 'Sound stays off in this stage. Playback is unmirrored, as your audience would see you.' : stage === 'audio' ? 'Audio-only playback from this browser.' : 'Full video is played from your browser; it has not been uploaded.'}</p><div class="metrics-grid">${stage === 'video' ? metric('Tracked delivery', visual ? `${Math.round(visual.coverage * 100)}%` : '—', 'Usable pose coverage') + metric('Alignment shift', visual?.deviationPercent != null ? `${Math.round(visual.deviationPercent)}%` : '—', visual?.upperBodyOnly > 0 ? 'Includes upper-body approximation' : 'Of tracked time') + metric('Practice mode', recording.payload.mode === 'seated' ? 'Seated' : 'Standing', 'Your selected setup') : metric('Delivery pace', metrics ? `${Math.round(metrics.wpm)}` : '—', '110–180 WPM target') + metric('Filler words', metrics ? metrics.fillers : '—', 'Hesitations and filler phrases') + metric('Pause cues', metrics ? metrics.pauses : '—', 'Punctuation and long gaps')}</div>${
     events.length
       ? `<section class="timeline"><h3>Moments to revisit</h3><div class="timeline-items">${events
           .slice(0, 30)
           .map(
             (e) =>
-              `<button data-seek="${e.startMs}">${formatTime(e.startMs)} · ${escape({ filler: 'Filler', pause: 'Pause', posture: 'Alignment shift' }[e.category] || e.category)}</button>`,
+              `<button data-seek="${e.startMs}">${formatTime(e.startMs)} · ${escape(e.category === 'pause' ? `${e.kind === 'comma' ? 'Comma pause' : e.kind === 'sentence' ? 'Sentence pause' : 'Pause'}${e.issue ? ` · ${e.issue === 'too-short' ? 'too short' : 'too long'}` : ''}` : { filler: 'Filler', posture: 'Alignment shift' }[e.category] || e.category)}</button>`,
           )
           .join('')}</div></section>`
       : ''
@@ -436,7 +445,7 @@ function bind() {
       if (
         typeof result.script !== 'string' ||
         !result.script.trim() ||
-        result.script.length > 15000
+        result.script.length > MAX_SCRIPT_CHARS
       )
         throw new Error('The draft was incomplete. Try generating it again.');
       invalidateCards();
@@ -738,19 +747,32 @@ function updateScore(score) {
     $('score-progress').style.transform = `scaleX(${(score.score ?? 0) / 100})`;
   if ($('score-state'))
     $('score-state').textContent =
-      score.score === null ? 'Collecting evidence' : '/ 100 · provisional';
+      score.score === null
+        ? 'Collecting evidence'
+        : score.partial
+          ? '/ 100 · partial · provisional'
+          : '/ 100 · provisional';
   if ($('score-explanation'))
     $('score-explanation').textContent =
       score.score !== null
-        ? 'A provisional running score. Final analysis checks word timing and may change it.'
+        ? score.partial
+          ? `Partial running score · ${Math.round(score.coverage.posture * 100)}% posture coverage. Speech categories only; final timing may change it.`
+          : 'A provisional running score. Final analysis checks word timing and may change it.'
         : state.sessionId
-          ? 'A score needs 50 finalized words, 30 seconds of speech, and 80% usable posture tracking.'
+          ? 'A score needs 50 finalized words and 30 seconds of speech. Below 80% posture coverage, it becomes a partial score.'
           : 'Live transcription is unavailable. Final AI analysis will use the recorded audio.';
   if ($('filler-count'))
     $('filler-count').textContent = state.media?.liveReady ? score.fillers : '—';
   if ($('pace-value'))
     $('pace-value').textContent =
-      state.media?.liveReady && score.elapsed > 5000 ? Math.round(score.pace) : '—';
+      state.media?.liveReady && score.elapsed > 5000 && score.pace != null
+        ? Math.round(score.pace)
+        : '—';
+  if ($('pace-feedback'))
+    $('pace-feedback').textContent =
+      !state.media?.liveReady || score.pace == null || score.elapsed <= 5000
+        ? 'Target 110–180 WPM · waiting for finalized speech.'
+        : `${score.pace < 110 ? 'Below target · try a steadier pace' : score.pace > 180 ? 'Above target · give each idea more space' : 'Pace is in the target range'} · 110–180 WPM. Final deductions use 20-second windows.`;
 }
 async function startRecording() {
   if (state.busy || !state.camera || !state.consent || !state.health?.aiConfigured) return;

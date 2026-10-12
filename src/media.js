@@ -1,5 +1,7 @@
 import { calibrate, measurements, PostureDetector, EpisodeTracker } from '../shared/posture.js';
-import { provisionalScore, isFiller } from '../shared/scoring.js';
+import { provisionalScore, RUBRIC } from '../shared/scoring.js';
+import { detectFillers } from '../shared/speech.js';
+import { MAX_RECORDING_MS } from '../shared/limits.js';
 
 export function wavFromChunks(chunks) {
   const size = chunks.reduce((sum, c) => sum + c.length, 0);
@@ -165,6 +167,7 @@ export class PracticeMedia {
             timeMs: Math.max(0, data.time - this.startedAt),
             valid: posture.valid,
             deviation: posture.deviation,
+            limited: Boolean(posture.limited),
           };
           this.poseSamples.push(sample);
           const event = this.episodes.update(sample);
@@ -291,15 +294,19 @@ export class PracticeMedia {
         if (this.seenTurns.has(item.id)) return;
         this.seenTurns.add(item.id);
         this.turns.push(item);
-        item.text.split(/\s+/).forEach((word, i) => {
-          if (isFiller(word))
-            this.events.push({
-              id: `${item.id}-filler-${i}`,
-              category: 'filler',
-              startMs: item.startMs,
-              endMs: item.endMs,
-            });
-        });
+        const liveWords = item.text
+          .trim()
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((text) => ({ text }));
+        for (const filler of detectFillers(liveWords))
+          this.events.push({
+            id: `${item.id}-filler-${filler.index}`,
+            category: 'filler',
+            startMs: item.startMs,
+            endMs: item.endMs,
+            text: filler.text,
+          });
         this.callbacks.onTranscript?.(item.text, true);
         this.publishScore();
       }
@@ -351,8 +358,8 @@ export class PracticeMedia {
       this.callbacks.onStarted?.();
       this.publishScore();
       this.autoStop = setTimeout(
-        () => this.callbacks.onInterrupt?.('Five-minute practice complete.'),
-        300000,
+        () => this.callbacks.onInterrupt?.('15-minute practice complete.'),
+        MAX_RECORDING_MS,
       );
       if (aiConfigured) this.connectLive(sessionId);
     };
@@ -390,7 +397,7 @@ export class PracticeMedia {
       if (count < 3) continue;
       this.livePaceWindows.add(end);
       const pace = count * 3;
-      if (pace < 110 || pace > 180)
+      if (pace < RUBRIC.pace[0] || pace > RUBRIC.pace[1])
         this.events.push({ id: `pace-${end}`, category: 'pace', startMs: end - 20000, endMs: end });
     }
     if (
@@ -404,7 +411,9 @@ export class PracticeMedia {
     this.callbacks.onScore?.({
       ...provisionalScore(this),
       fillers: this.events.filter((e) => e.category === 'filler').length,
-      pace: (words * 60000) / Math.max(1, elapsed),
+      pace: this.turns.length
+        ? (words * 60000) / Math.max(1, this.turns.at(-1).endMs - this.turns[0].startMs)
+        : null,
       elapsed,
     });
   }

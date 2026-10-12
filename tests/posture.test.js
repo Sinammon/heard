@@ -73,10 +73,28 @@ describe('posture geometry and calibration', () => {
     );
     expect(deviation(measurement({ hips: false, drop: 0.09 }), b, 'seated').deviation).toBe(true);
     expect(deviation(measurement({ hips: false, shiftX: 0.15 }), b, 'seated').deviation).toBe(true);
-    expect(deviation(measurement({ hips: false }), baseline(), 'seated').valid).toBe(false);
+    expect(deviation(measurement({ hips: false }), baseline(), 'seated')).toMatchObject({
+      valid: true,
+      limited: true,
+      deviation: false,
+    });
+    expect(deviation(measurement({ hips: false }), baseline(), 'standing').valid).toBe(false);
   });
 });
 describe('stable live posture feedback', () => {
+  it('keeps seated tracking usable when hips disappear and resets a torso warning', () => {
+    const detector = new PostureDetector();
+    const b = baseline();
+    let result;
+    for (let t = 0; t <= 3000; t += 100)
+      result = detector.update(measurement({ pitch: 28 }), b, 'seated', t);
+    expect(result.deviation).toBe(true);
+    result = detector.update(measurement({ hips: false }), b, 'seated', 3100);
+    expect(result).toMatchObject({ valid: true, limited: true, deviation: false });
+    expect(result.hint).toMatch(/Upper-body/);
+    result = detector.update(measurement(), b, 'seated', 3200);
+    expect(result).toMatchObject({ valid: true, limited: false, deviation: false });
+  });
   it('ignores brief motion, confirms sustained lean, and clears after recovery', () => {
     const detector = new PostureDetector();
     const b = baseline();

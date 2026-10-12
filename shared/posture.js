@@ -23,14 +23,16 @@ export function measurements(landmarks, mode, aspectRatio = 1, worldLandmarks = 
   if (width < 0.08 || Math.abs(dx) / width < 0.6) return null;
   const centerX = (left.x + right.x) / 2;
   const centerY = (left.y + right.y) / (2 * aspectRatio);
-  const hasHips = [23, 24].every((i) => visible(landmarks[i]));
+  const hasHips =
+    [23, 24].every((i) => visible(landmarks[i])) &&
+    (landmarks[23].y + landmarks[24].y) / (2 * aspectRatio) - centerY >= width * 0.4;
+  if (mode === 'standing' && !hasHips) return null;
   let torsoAngle = null,
     torsoPitch = null,
     torsoLength = null;
   if (hasHips) {
     const hipX = (landmarks[23].x + landmarks[24].x) / 2;
     const hipY = (landmarks[23].y + landmarks[24].y) / (2 * aspectRatio);
-    if (hipY - centerY < width * 0.4) return null;
     torsoAngle = (Math.atan2(centerX - hipX, hipY - centerY) * 180) / Math.PI;
     torsoLength = (hipY - centerY) / width;
     if (
@@ -113,15 +115,17 @@ export function deviation(m, b, mode) {
       reason = hint;
     }
   };
-  if (Number.isFinite(b.torsoAngle)) {
+  const hasTorso = Number.isFinite(b.torsoAngle) && Number.isFinite(m.torsoAngle);
+  if (Number.isFinite(b.torsoAngle) && !hasTorso && mode === 'standing') {
+    return {
+      valid: false,
+      deviation: false,
+      magnitude: 0,
+      hint: 'Keep shoulders and hips visible for back tracking',
+    };
+  }
+  if (hasTorso) {
     // Do not substitute inferred/off-screen hips for usable torso evidence.
-    if (!Number.isFinite(m.torsoAngle))
-      return {
-        valid: false,
-        deviation: false,
-        magnitude: 0,
-        hint: 'Keep shoulders and hips visible for back tracking',
-      };
     consider(
       angleDifference(m.torsoAngle, b.torsoAngle) / 15,
       'Leaning sideways · return to your baseline',
@@ -146,12 +150,13 @@ export function deviation(m, b, mode) {
   }
   return {
     valid: true,
+    limited: !hasTorso,
     deviation: magnitude > 1,
     magnitude: clamp(magnitude, 0, 3),
     hint:
       magnitude > 1
         ? reason
-        : b.torsoAngle === null
+        : !hasTorso
           ? 'Upper-body alignment steady · hips needed for back tracking'
           : 'Aligned with your baseline',
   };
@@ -167,6 +172,7 @@ export class PostureDetector {
     this.pending = null;
     this.recovery = null;
     this.shifted = false;
+    this.lastLimited = null;
   }
   update(measurement, baseline, mode, timeMs) {
     if (!measurement || !baseline || (this.lastTime !== null && timeMs - this.lastTime > 1000))
@@ -176,6 +182,9 @@ export class PostureDetector {
       this.reset();
       return raw;
     }
+    // A torso warning must not carry over into the upper-body approximation.
+    if (this.lastLimited !== null && this.lastLimited !== raw.limited) this.reset();
+    this.lastLimited = raw.limited;
     const dt = this.lastTime === null ? 100 : Math.max(0, timeMs - this.lastTime);
     this.lastTime = timeMs;
     const alpha = 1 - Math.exp(-dt / 350);
@@ -206,8 +215,9 @@ export class PostureDetector {
           : raw.hint
         : this.pending !== null
           ? 'Checking alignment · brief movement is normal'
-          : 'Aligned with your baseline',
-      limited: baseline.torsoAngle === null,
+          : raw.limited
+            ? 'Upper-body alignment steady · hips needed for back tracking'
+            : 'Aligned with your baseline',
     };
   }
 }
@@ -222,6 +232,7 @@ export class EpisodeTracker {
     this.recovery = null;
     this.counted = false;
     this.lastValid = null;
+    this.lastLimited = null;
     this.events = [];
   }
   update(sample) {
@@ -231,6 +242,9 @@ export class EpisodeTracker {
     }
     if (this.lastValid !== null && sample.timeMs - this.lastValid > 1000)
       this.close(this.lastValid);
+    if (this.lastLimited !== null && this.lastLimited !== Boolean(sample.limited))
+      this.close(this.lastValid);
+    this.lastLimited = Boolean(sample.limited);
     this.lastValid = sample.timeMs;
     if (sample.deviation) {
       this.recovery = null;
