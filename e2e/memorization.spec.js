@@ -83,7 +83,7 @@ test('countdown starts the speaking test automatically with only key points and 
     .getByRole('link', { name: 'Home', exact: true })
     .click();
   await expect(page.locator('#studio')).toBeHidden();
-  await page.getByRole('link', { name: 'Open studio', exact: false }).first().click();
+  await page.getByRole('link', { name: 'Start practicing', exact: false }).first().click();
   await expect(page.locator('.memory-review')).toBeVisible();
   await page.getByRole('button', { name: 'New practice' }).click();
   await expect(page.getByLabel('Your practice script')).toHaveValue(script);
@@ -127,7 +127,7 @@ test('Home and Studio are separate pages and mode preferences survive refresh', 
   await page.goto('/');
   await expect(page.locator('#studio')).toBeHidden();
   await expect(page.getByLabel('Your practice script')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Enter studio' }).click();
+  await page.getByRole('button', { name: 'Start practicing' }).click();
   await expect(page.locator('#home-page')).toBeHidden();
   await page.getByRole('radio', { name: 'Memorization test' }).check();
   await page.getByLabel('Time to memorize · minutes').fill('3');

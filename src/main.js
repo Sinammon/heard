@@ -79,6 +79,10 @@ function render() {
     if (link.hash === `#${currentPage}`) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   });
+  const navAction = $('nav-action');
+  navAction.href = currentPage === 'studio' ? '#home' : '#studio';
+  navAction.innerHTML = `${currentPage === 'studio' ? 'Back to home' : 'Start practicing'} ${icon('arrow')}`;
+  navAction.removeAttribute('aria-current');
   if (currentPage !== 'studio') return;
   const currentStep =
     state.screen === 'script'
@@ -416,6 +420,10 @@ function bind() {
     state.success = '';
     document.querySelector('.success-banner')?.remove();
     $('to-setup').disabled = count < 3 || state.busy;
+    $('prepare-hint').textContent =
+      count < 3
+        ? 'Add at least 3 words to continue. Notes are welcome.'
+        : 'Ready when you are. Your script stays editable.';
   });
   on('topic', 'input', (e) => {
     state.topic = e.target.value;
@@ -512,6 +520,7 @@ function bind() {
       state.calibrated = false;
     }
     render();
+    $('consent')?.focus({ preventScroll: true });
   });
   document.querySelectorAll('input[name="mode"]').forEach((input) =>
     input.addEventListener('change', () => {

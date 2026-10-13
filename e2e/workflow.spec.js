@@ -14,7 +14,7 @@ test('consented capture, automatic cards, failed AI playback, muted video, and r
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
-  await page.getByRole('button', { name: 'Enter studio' }).click();
+  await page.getByRole('button', { name: 'Start practicing' }).click();
   await page
     .getByLabel('Your practice script')
     .fill(
@@ -79,8 +79,8 @@ test('script generation and quota errors are visible without exposing a key', as
     }),
   );
   await page.goto('/');
-  await page.getByRole('button', { name: 'Enter studio' }).click();
-  await page.getByRole('tab', { name: 'Draft with Gemini' }).click();
+  await page.getByRole('button', { name: 'Start practicing' }).click();
+  await page.getByRole('tab', { name: 'Draft with AI' }).click();
   await page.getByLabel('What would you like to talk about?').fill('Learning a new skill');
   await page.getByRole('button', { name: 'Generate a draft' }).click();
   await expect(page.getByRole('alert')).toContainText('quota');
@@ -127,7 +127,7 @@ test('home, about, and studio navigation preserve the script and support browser
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .locator('..')
-    .getByRole('link', { name: 'Open studio' })
+    .getByRole('link', { name: 'Start practicing' })
     .click();
   await page.getByLabel('Your practice script').fill('This draft should survive page navigation.');
   await page
@@ -137,7 +137,7 @@ test('home, about, and studio navigation preserve the script and support browser
   await page
     .getByRole('navigation', { name: 'Main navigation' })
     .locator('..')
-    .getByRole('link', { name: 'Open studio' })
+    .getByRole('link', { name: 'Start practicing' })
     .click();
   await expect(page.getByLabel('Your practice script')).toHaveValue(
     'This draft should survive page navigation.',
@@ -226,7 +226,7 @@ test('completed reviews render safe evidence links and streamed coaching', async
     }),
   );
   await page.goto('/');
-  await page.getByRole('button', { name: 'Enter studio' }).click();
+  await page.getByRole('button', { name: 'Start practicing' }).click();
   await page
     .getByLabel('Your practice script')
     .fill('A short practice script for testing complete reviews and coaching.');

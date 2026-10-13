@@ -36,14 +36,14 @@ test('fifteen-minute settings persist and partial reviews explain omitted postur
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/#studio');
-  await page.getByRole('tab', { name: 'Draft with Gemini' }).click();
+  await page.getByRole('tab', { name: 'Draft with AI' }).click();
   await page.getByLabel('Talk length').selectOption('15');
   await page.getByRole('tab', { name: 'Write my own' }).click();
   await page
     .getByLabel('Your practice script')
     .fill('A useful speech about learning through daily practice.');
   await page.reload();
-  await page.getByRole('tab', { name: 'Draft with Gemini' }).click();
+  await page.getByRole('tab', { name: 'Draft with AI' }).click();
   await expect(page.getByLabel('Talk length')).toHaveValue('15');
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await page.locator('#consent').check();

@@ -74,7 +74,7 @@ test('quota failure can retry and card updates leave camera preview mounted', as
     .getByRole('navigation', { name: 'Main navigation' })
     .getByRole('link', { name: 'Home', exact: true })
     .click();
-  await page.getByRole('link', { name: 'Open studio', exact: false }).first().click();
+  await page.getByRole('link', { name: 'Start practicing', exact: false }).first().click();
   expect(await page.evaluate(() => window.previewBeforeCards.srcObject.active)).toBe(false);
   await expect(page.locator('.flashcard')).toHaveCount(3);
   await expect(page.getByRole('button', { name: 'Start practice' })).toBeDisabled();

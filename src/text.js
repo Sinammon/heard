@@ -1,3 +1,5 @@
+import { MAX_PRACTICE_MINUTES } from '../shared/limits.js';
+
 export const escape = (value) =>
   String(value ?? '').replace(
     /[&<>"']/g,
@@ -9,6 +11,10 @@ export const wordCount = (text) => text.trim().split(/\s+/).filter(Boolean).leng
 export function readingTime(text) {
   const count = wordCount(text);
   if (!count) return 'Add a few words to begin';
-  const minutes = Math.ceil(count / 130);
-  return `About ${minutes} ${minutes === 1 ? 'minute' : 'minutes'}${minutes > 5 ? ' · trim to fit the 5-minute limit' : ' at a comfortable pace'}`;
+  const seconds = Math.max(1, Math.round((count / 130) * 60));
+  const duration =
+    seconds < 60
+      ? `${seconds} ${seconds === 1 ? 'second' : 'seconds'}`
+      : `${Math.floor(seconds / 60)} min${seconds % 60 ? ` ${seconds % 60} sec` : ''}`;
+  return `About ${duration}${count > MAX_PRACTICE_MINUTES * 130 ? ` · trim to fit the ${MAX_PRACTICE_MINUTES}-minute limit` : ' at a comfortable pace'}`;
 }

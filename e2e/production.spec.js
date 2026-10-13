@@ -18,7 +18,7 @@ test('homepage topic carries into a usable draft and persists across refresh', a
   });
   await page.goto('/');
   await page.getByRole('button', { name: 'Class presentation', exact: true }).click();
-  await page.getByRole('button', { name: 'Enter studio' }).click();
+  await page.getByRole('button', { name: 'Start practicing' }).click();
   await expect(page.getByLabel('What would you like to talk about?')).toHaveValue(
     'Introduce an idea to my class',
   );
@@ -49,7 +49,7 @@ test('malformed draft responses preserve the existing script and offer recovery'
   await page.route('**/api/scripts', (route) => route.fulfill({ json: { script: null } }));
   await page.goto('/#studio');
   await page.getByLabel('Your practice script').fill('This is the draft I want to preserve.');
-  await page.getByRole('tab', { name: 'Draft with Gemini' }).click();
+  await page.getByRole('tab', { name: 'Draft with AI' }).click();
   await page.getByLabel('What would you like to talk about?').fill('Trying a new habit');
   await page.getByRole('button', { name: 'Generate a draft' }).click();
   await expect(page.getByRole('alert')).toContainText('incomplete');
@@ -99,8 +99,8 @@ test('script source tabs support arrow-key selection', async ({ page }) => {
   await page.goto('/#studio');
   await page.getByRole('tab', { name: 'Write my own' }).focus();
   await page.keyboard.press('ArrowRight');
-  await expect(page.getByRole('tab', { name: 'Draft with Gemini' })).toBeFocused();
-  await expect(page.getByRole('tab', { name: 'Draft with Gemini' })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Draft with AI' })).toBeFocused();
+  await expect(page.getByRole('tab', { name: 'Draft with AI' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
