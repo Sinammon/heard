@@ -55,7 +55,7 @@ export class PracticeMedia {
     this.lastMetrics = null;
     this.acoustics = { pitchVariation: null, relativeLoudness: 0, clippedFraction: 0 };
   }
-  async prepare(video, { audioId, videoId } = {}) {
+  async prepare(video, { audioId, videoId, camera = true } = {}) {
     this.video = video;
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder)
       throw new Error('Use desktop Chrome or Edge on localhost or HTTPS to record.');
@@ -63,15 +63,20 @@ export class PracticeMedia {
       audio: audioId
         ? { deviceId: { exact: audioId }, echoCancellation: true, noiseSuppression: true }
         : { echoCancellation: true, noiseSuppression: true },
-      video: {
-        ...(videoId ? { deviceId: { exact: videoId } } : {}),
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
-        frameRate: { ideal: 30 },
-      },
+      video: camera
+        ? {
+            ...(videoId ? { deviceId: { exact: videoId } } : {}),
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 },
+          }
+        : false,
     });
-    video.srcObject = this.stream;
-    await video.play();
+    this.hasVideo = this.stream.getVideoTracks().length > 0;
+    if (this.hasVideo && video) {
+      video.srcObject = this.stream;
+      await video.play();
+    }
     for (const track of this.stream.getTracks())
       track.addEventListener('ended', () => {
         if (this.ready || this.running)
@@ -140,6 +145,8 @@ export class PracticeMedia {
     };
     // MediaPipe's WASM loader uses importScripts, which needs a classic worker.
     // Vite bundles this entry (and its ESM imports) as an IIFE for production.
+    this.ready = true;
+    if (!this.hasVideo) return;
     this.poseWorker = new Worker(new URL('./pose-worker.js', import.meta.url));
     this.poseWorker.onmessage = ({ data }) => {
       if (data.type === 'ready') {
@@ -148,6 +155,10 @@ export class PracticeMedia {
       }
       if (data.type === 'error') this.callbacks.onLive?.(data.message);
       if (data.type === 'pose') {
+        if (this.running && data.time < this.startedAt) {
+          this.poseBusy = false;
+          return;
+        }
         this.poseBusy = false;
         const m = measurements(data.landmarks, this.mode, data.aspectRatio, data.worldLandmarks);
         if (this.calibrating) {
@@ -323,8 +334,8 @@ export class PracticeMedia {
         );
     };
   }
-  start(sessionId, aiConfigured) {
-    if (!this.ready || this.running) throw new Error('Camera is not ready.');
+  start(sessionId, aiConfigured, durationMs = MAX_RECORDING_MS) {
+    if (!this.ready || this.running) throw new Error('Microphone is not ready.');
     this.pcm = [];
     this.poseSamples = [];
     this.frames = [];
@@ -334,9 +345,11 @@ export class PracticeMedia {
     this.episodes.reset();
     this.postureDetector.reset();
     this.livePaceWindows = new Set();
-    const mime = ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4'].find((type) =>
-      MediaRecorder.isTypeSupported(type),
-    );
+    const mime = (
+      this.hasVideo
+        ? ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
+        : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
+    ).find((type) => MediaRecorder.isTypeSupported(type));
     this.recorder = new MediaRecorder(this.stream, {
       ...(mime ? { mimeType: mime } : {}),
       videoBitsPerSecond: 1800000,
@@ -358,15 +371,15 @@ export class PracticeMedia {
       this.callbacks.onStarted?.();
       this.publishScore();
       this.autoStop = setTimeout(
-        () => this.callbacks.onInterrupt?.('15-minute practice complete.'),
-        MAX_RECORDING_MS,
+        () => this.callbacks.onInterrupt?.('Your practice time is complete.'),
+        Math.min(MAX_RECORDING_MS, Math.max(1000, durationMs)),
       );
       if (aiConfigured) this.connectLive(sessionId);
     };
     this.recorder.start(1000);
   }
   takeFrame(event = false) {
-    if (!this.running || !this.video.videoWidth) return;
+    if (!this.running || !this.hasVideo || !this.video?.videoWidth) return;
     const canvas = document.createElement('canvas');
     canvas.width = 640;
     canvas.height = Math.round((640 * this.video.videoHeight) / this.video.videoWidth);
@@ -482,12 +495,13 @@ export class PracticeMedia {
       }
     const peak = Math.max(0.001, ...waveform);
     const result = {
+      hasVideo: this.hasVideo,
       videoBlob,
       audioBlob: wav.blob,
       waveform: waveform.map((v) => v / peak),
       payload,
       live: provisionalScore(this),
-      videoUrl: URL.createObjectURL(videoBlob),
+      videoUrl: this.hasVideo ? URL.createObjectURL(videoBlob) : null,
       audioUrl: URL.createObjectURL(wav.blob),
     };
     await this.dispose();
@@ -499,6 +513,7 @@ export class PracticeMedia {
     clearTimeout(this.autoStop);
     cancelAnimationFrame(this.animation);
     this.socket?.close();
+    if (this.recorder?.state && this.recorder.state !== 'inactive') this.recorder.stop();
     this.poseWorker?.terminate();
     this.audioWorker?.terminate();
     this.source?.disconnect();

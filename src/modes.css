@@ -1,0 +1,431 @@
+/* Five practices, one quiet workspace. */
+.home-modes {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: clamp(32px, 7vw, 100px);
+  padding: 90px 0;
+  border-top: 1px solid var(--line);
+}
+.home-modes h2 {
+  font-family: var(--font-display, 'Instrument Serif', serif);
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  font-weight: 400;
+  line-height: 1.05;
+  margin: 12px 0 24px;
+}
+.home-mode-list {
+  border-top: 1px solid var(--line);
+}
+.home-mode-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  padding: 25px 8px;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background 180ms,
+    padding 180ms;
+}
+.home-mode-list button:hover {
+  background: #efeee7;
+  padding-inline: 16px;
+}
+.home-mode-list button > span:nth-child(2) {
+  flex: 1;
+}
+.home-mode-list strong {
+  display: block;
+  font-size: 1.15rem;
+  font-weight: 550;
+}
+.home-mode-list small {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.home-mode-list svg {
+  width: 24px;
+  flex-shrink: 0;
+}
+.training-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-width: none;
+}
+.training-option {
+  padding: 16px 12px;
+  align-items: start;
+  gap: 8px;
+  border-radius: 8px;
+}
+.training-option input {
+  margin-top: 3px;
+}
+.training-option strong {
+  font-size: 1.05rem;
+}
+.training-option small {
+  font-size: 0.9rem;
+}
+.mode-preparation {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  padding: 24px 0 60px;
+}
+.mode-preparation h2 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400;
+  font-size: clamp(2.4rem, 4vw, 3.5rem);
+  line-height: 1.1;
+  margin: 16px 0 22px;
+}
+.mode-preparation p {
+  max-width: 48ch;
+  line-height: 1.75;
+}
+.mode-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-content: start;
+}
+.mode-options .field {
+  min-width: 0;
+  margin: 0;
+}
+.mode-options .button {
+  grid-column: 1/-1;
+  margin-top: 16px;
+}
+.camera-choice {
+  padding: 16px 0;
+}
+.camera-choice small {
+  color: var(--muted);
+}
+.setup-grid:not(:has(.settings-panel:not([hidden]))) {
+  grid-template-columns: 1fr;
+}
+.setup-grid:not(:has(.settings-panel:not([hidden]))) .camera-panel {
+  max-width: 850px;
+  width: 100%;
+}
+.mic-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 230px;
+  background: #efeee7;
+  border-radius: 12px;
+  text-align: center;
+  padding: 28px;
+  gap: 16px;
+}
+.mic-preview h3 {
+  margin: 0;
+  font-weight: 500;
+  font-size: 1.4rem;
+}
+.mic-preview p {
+  max-width: 42ch;
+  margin: 0;
+  color: var(--muted);
+}
+.mic-preview .level-bars {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  gap: 4px;
+}
+.mic-preview .level-bars span {
+  background: #c9c9be;
+  width: 5px;
+  height: 12px;
+  border-radius: 4px;
+  transition: height 150ms;
+}
+.mic-preview .level-bars span.on {
+  background: var(--accent);
+  height: 26px;
+}
+.active-prompt {
+  padding: 26px 0;
+  margin-bottom: 24px;
+  border-block: 1px solid var(--line);
+}
+.active-prompt:has(h2:empty) {
+  display: none;
+}
+.active-prompt h2 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400;
+  font-size: clamp(1.8rem, 3vw, 2.8rem);
+  line-height: 1.2;
+  max-width: 32ch;
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.impromptu-study {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 50px;
+}
+.impromptu-study .study-clock {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.cue-card {
+  padding: 26px 0;
+  margin-top: 20px;
+  border-block: 1px solid var(--line);
+}
+.cue-card h2 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400;
+  font-size: 2rem;
+  margin: 20px 0 12px;
+}
+.cue-card .actions {
+  justify-content: space-between;
+  gap: 12px;
+}
+.recording-aside .score-panel {
+  background: transparent;
+  border: 0;
+  padding: 16px 0;
+}
+.recording-aside .score-value strong {
+  font-size: 2rem;
+}
+.recording-aside .score-meter {
+  display: none;
+}
+.final-score {
+  padding: 20px 0;
+  border-radius: 0;
+  background: transparent;
+  border-block: 1px solid var(--line);
+}
+.final-score strong {
+  font-size: 2.5rem;
+}
+.review-grid .feedback {
+  order: -1;
+}
+.review-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.interview-conversation {
+  padding: 0 0 36px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--line);
+}
+.interview-conversation h2,
+.attempt-comparison h2 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400;
+  font-size: 2.4rem;
+  margin: 12px 0 24px;
+}
+.interview-turns {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 18px;
+}
+.interview-turns li {
+  border-left: 2px solid #dfd9cc;
+  padding: 8px 0 8px 22px;
+}
+.interview-turns h3 {
+  font-size: 1.1rem;
+  margin: 10px 0;
+}
+.interview-turns details {
+  margin: 15px 0;
+}
+.interview-turns summary {
+  cursor: pointer;
+}
+.interview-turns p {
+  overflow-wrap: anywhere;
+}
+.attempt-comparison {
+  margin-bottom: 36px;
+}
+.attempt-comparison table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+.attempt-comparison th,
+.attempt-comparison td {
+  text-align: left;
+  padding: 14px 10px;
+  border-bottom: 1px solid var(--line);
+  font-variant-numeric: tabular-nums;
+}
+.attempt-comparison th {
+  font-weight: 500;
+}
+@media (max-width: 1000px) {
+  .training-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .mode-preparation {
+    gap: 36px;
+  }
+}
+@media (max-width: 700px) {
+  .home-modes,
+  .mode-preparation,
+  .impromptu-study,
+  .review-grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .home-modes {
+    padding: 50px 0;
+  }
+  .training-options {
+    grid-template-columns: 1fr;
+  }
+  .training-option {
+    padding: 12px;
+  }
+  .training-option small {
+    display: none;
+  }
+  .training-option strong {
+    font-size: 1rem;
+    line-height: 1.45;
+  }
+  .mode-options {
+    gap: 14px;
+  }
+  .home-mode-list button {
+    gap: 14px;
+    padding-block: 20px;
+  }
+  .home-mode-list small {
+    font-size: 0.95rem;
+  }
+  .mic-preview {
+    min-height: 190px;
+    padding: 24px 15px;
+  }
+  .review-actions,
+  .interview-conversation .actions {
+    flex-wrap: wrap;
+  }
+  .review-actions .button {
+    width: 100%;
+    justify-content: center;
+  }
+  .attempt-comparison th,
+  .attempt-comparison td {
+    padding: 12px 5px;
+    font-size: 0.95rem;
+  }
+  .recording-toolbar {
+    bottom: 12px;
+  }
+}
+@media (max-width: 380px) {
+  .mode-options {
+    grid-template-columns: 1fr;
+  }
+  .training-options {
+    gap: 6px;
+  }
+  .training-option {
+    padding: 10px 8px;
+    gap: 6px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-mode-list button,
+  .mic-preview .level-bars span {
+    transition: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .recording-toolbar {
+    background: #faf9f6;
+    backdrop-filter: none;
+  }
+}
+
+.training-modes,
+.training-option,
+.training-option span {
+  min-width: 0;
+}
+.home-modes .section-heading {
+  display: block;
+  margin: 0;
+}
+.review-summary {
+  max-width: 70ch;
+  font-size: 1.18rem;
+  line-height: 1.75;
+  margin: -8px 0 32px;
+}
+@media (max-width: 700px) {
+  .training-option {
+    align-items: center;
+  }
+  .training-option strong {
+    font-size: 1rem;
+    margin: 0;
+  }
+}
+@keyframes cue-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.cue-card h2,
+.cue-card > p {
+  animation: cue-arrive 180ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cue-card h2,
+  .cue-card > p {
+    animation: none;
+  }
+}
+.retry-actions {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0 0 32px;
+}
+.feedback {
+  background: transparent;
+  border: 0;
+  padding: 12px 0;
+}
+@media (max-width: 700px) {
+  .retry-actions .button {
+    flex: 1;
+    justify-content: center;
+  }
+}

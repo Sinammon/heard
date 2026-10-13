@@ -31,8 +31,9 @@ test('duration and setup guidance match the available practice actions', async (
   await expect(page.locator('#camera-status')).toContainText('Accept AI processing');
   await page.locator('#consent').check();
   await expect(page.locator('#consent')).toBeFocused();
-  await expect(page.locator('#start-hint')).toContainText('Enable your camera');
-  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.locator('#camera-enabled').check();
+  await expect(page.locator('#start-hint')).toContainText('Enable your microphone');
+  await page.locator('#enable-camera').click();
   await expect(page.locator('#start-hint')).toContainText('You’re ready');
   await expect(page.getByRole('button', { name: 'Start practice', exact: true })).toBeEnabled();
 });

@@ -50,7 +50,7 @@ it('stops at 15 minutes, rather than at the former five-minute limit', () => {
   vi.advanceTimersByTime(5 * 60000);
   expect(onInterrupt).not.toHaveBeenCalled();
   vi.advanceTimersByTime(10 * 60000);
-  expect(onInterrupt).toHaveBeenCalledExactlyOnceWith('15-minute practice complete.');
+  expect(onInterrupt).toHaveBeenCalledExactlyOnceWith('Your practice time is complete.');
 });
 
 it('accepts fifteen-minute sample timelines and report evidence, and rejects excess duration', () => {
@@ -222,4 +222,31 @@ it('relays fifteen minutes of live PCM and closes when the bound is exceeded', a
   } finally {
     ws.terminate();
   }
+});
+
+it.each([1, 2, 3])('honors a %i-minute exercise timer', (minutes) => {
+  vi.useFakeTimers();
+  vi.stubGlobal(
+    'MediaRecorder',
+    class {
+      static isTypeSupported() {
+        return true;
+      }
+      start() {
+        this.onstart();
+      }
+    },
+  );
+  const onInterrupt = vi.fn();
+  const media = new PracticeMedia({ onInterrupt });
+  media.ready = true;
+  media.stream = {};
+  media.audioWorker = { postMessage() {} };
+  media.capture = { port: { postMessage() {} } };
+  media.start('test', false, minutes * 60000);
+  vi.advanceTimersByTime(minutes * 60000 - 1);
+  expect(onInterrupt).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(1);
+  expect(onInterrupt).toHaveBeenCalledOnce();
+  clearTimeout(media.autoStop);
 });

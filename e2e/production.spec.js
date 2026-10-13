@@ -69,14 +69,15 @@ test('practice requires explicit AI consent before devices or sessions', async (
   await page.getByLabel('Your practice script').fill('A short practice with required AI review.');
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await expect(page.locator('#consent')).not.toBeChecked();
-  await expect(page.getByRole('button', { name: 'Enable camera & microphone' })).toBeDisabled();
+  await expect(page.locator('#enable-camera')).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Start practice' })).toBeDisabled();
   await expect(page.getByText(/Consent is required before enabling devices/)).toBeVisible();
   expect(cloudRequests).toEqual([]);
   await page.locator('#consent').check();
-  await expect(page.getByRole('button', { name: 'Enable camera & microphone' })).toBeEnabled();
+  await page.locator('#camera-enabled').check();
+  await expect(page.locator('#enable-camera')).toBeEnabled();
   await page.locator('#consent').uncheck();
-  await expect(page.getByRole('button', { name: 'Enable camera & microphone' })).toBeDisabled();
+  await expect(page.locator('#enable-camera')).toBeDisabled();
 });
 
 test('missing AI blocks practice while preserving script preparation', async ({ page }) => {
@@ -89,9 +90,9 @@ test('missing AI blocks practice while preserving script preparation', async ({ 
     .fill('Prepare this script while AI is unavailable.');
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await expect(page.locator('#consent')).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Enable camera & microphone' })).toBeDisabled();
+  await expect(page.locator('#enable-camera')).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Start practice' })).toBeDisabled();
-  await page.getByRole('button', { name: 'Back to script' }).click();
+  await page.getByRole('button', { name: 'Back to preparation' }).click();
   await expect(page.getByLabel('Your practice script')).toHaveValue(/Prepare this script/);
 });
 
@@ -146,11 +147,12 @@ test('three-stage studio navigation and denied devices keep preparation recovera
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await expect(steps.locator('[aria-current="step"]')).toContainText('Practice');
   await page.locator('#consent').check();
-  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.locator('#camera-enabled').check();
+  await page.locator('#enable-camera').click();
   await expect(page.getByRole('alert')).toContainText('access was denied');
   await expect(page.getByRole('button', { name: 'Start practice' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Enable camera & microphone' })).toBeEnabled();
-  await page.getByRole('button', { name: 'Back to script' }).click();
+  await expect(page.locator('#enable-camera')).toBeEnabled();
+  await page.getByRole('button', { name: 'Back to preparation' }).click();
   await expect(page.getByLabel('Your practice script')).toHaveValue(
     'Keep this script when device access fails.',
   );

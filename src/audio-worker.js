@@ -6,6 +6,7 @@ let window = new Float32Array(2048),
   silentStart = null,
   sawSpeech = false,
   pitches = [],
+  voicedBlocks = 0,
   rmsTotal = 0,
   blocks = 0,
   clipped = 0,
@@ -16,6 +17,7 @@ function reset() {
   silentStart = null;
   sawSpeech = false;
   pitches = [];
+  voicedBlocks = 0;
   rmsTotal = 0;
   blocks = 0;
   clipped = 0;
@@ -30,7 +32,7 @@ self.onmessage = ({ data }) => {
   if (data.type === 'finish') {
     const mean = pitches.reduce((a, b) => a + b, 0) / Math.max(1, pitches.length);
     const variation =
-      pitches.length > 10
+      pitches.length >= 30 && pitches.length >= voicedBlocks * 0.2
         ? Math.sqrt(pitches.reduce((sum, p) => sum + (p - mean) ** 2, 0) / pitches.length)
         : null;
     self.postMessage({
@@ -73,6 +75,7 @@ self.onmessage = ({ data }) => {
   window.set(samples.subarray(Math.max(0, samples.length - window.length)), carry);
   let pitch = null;
   if (active) {
+    voicedBlocks++;
     const [hz, quality] = detector.findPitch(window, 16000);
     if (quality >= 0.9 && hz >= 60 && hz <= 600) {
       pitch = hz;

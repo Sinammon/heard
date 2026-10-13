@@ -120,7 +120,7 @@ it.each([false, true])(
         : {}),
       poseSamples: [],
       postureEvents: [],
-      frames: [],
+      frames: [{ timeMs: 0, data: 'data:image/jpeg;base64,VEVTVA==' }],
       acoustics: { pitchVariation: null, relativeLoudness: 0, clippedFraction: 0 },
     };
     const boundary = 'practice-boundary';
@@ -153,7 +153,7 @@ it.each([false, true])(
     expect(calls[1].data).not.toHaveProperty('transcript');
     expect(calls[1].data).not.toHaveProperty('memorization');
     expect(calls[2].data).not.toHaveProperty('memorization');
-    expect(calls[1].media).toEqual([]);
+    expect(calls[1].media).toEqual([{ type: 'image', data: 'VEVTVA==', mime_type: 'image/jpeg' }]);
     expect(calls[2].media).toEqual([]);
     const duplicate = await app.inject({
       method: 'POST',
@@ -230,7 +230,7 @@ it('preserves visual feedback when word-timed transcription fails', async () => 
       deviation: false,
     })),
     postureEvents: [],
-    frames: [],
+    frames: [{ timeMs: 0, data: 'data:image/jpeg;base64,VEVTVA==' }],
     acoustics: { pitchVariation: null, relativeLoudness: 0, clippedFraction: 0 },
   };
   const boundary = 'partial-job';
@@ -271,7 +271,7 @@ async function submitShortTake(app, id, cookie) {
     mode: 'seated',
     poseSamples: [],
     postureEvents: [],
-    frames: [],
+    frames: [{ timeMs: 0, data: 'data:image/jpeg;base64,VEVTVA==' }],
     acoustics: { pitchVariation: null, relativeLoudness: 0, clippedFraction: 0 },
   };
   const boundary = 'memory-fixture';

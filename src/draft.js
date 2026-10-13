@@ -1,3 +1,4 @@
+import { PRACTICE_MODES } from '../shared/practice.js';
 import { MAX_PRACTICE_MINUTES, MAX_SCRIPT_CHARS } from '../shared/limits.js';
 
 const key = 'stagecraft.draft.v1';
@@ -17,7 +18,9 @@ export function loadDraft() {
         value.duration <= MAX_PRACTICE_MINUTES
           ? value.duration
           : 2,
-      practiceMode: value.practiceMode === 'memorization' ? 'memorization' : 'free',
+      practiceMode: PRACTICE_MODES.some((mode) => mode.id === value.practiceMode)
+        ? value.practiceMode
+        : 'free',
       memorizationMinutes:
         Number.isInteger(value.memorizationMinutes) &&
         value.memorizationMinutes >= 1 &&

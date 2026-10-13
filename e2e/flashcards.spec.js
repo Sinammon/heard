@@ -12,6 +12,7 @@ async function prepare(page) {
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await expect(page.getByRole('button', { name: 'I’ve read my script once' })).toBeDisabled();
   await page.locator('#consent').check();
+  await page.locator('#camera-enabled').check();
 }
 
 test('confirmed reading produces safe adaptive cards and edits invalidate them', async ({
@@ -35,7 +36,7 @@ test('confirmed reading produces safe adaptive cards and edits invalidate them',
   ).toBeVisible();
   expect(await page.evaluate(() => window.bad)).toBeUndefined();
   await expect(page.locator('.flashcard img')).toHaveCount(0);
-  await page.getByRole('button', { name: 'Back to script' }).click();
+  await page.getByRole('button', { name: 'Back to preparation' }).click();
   await page
     .getByLabel('Your practice script')
     .fill('An entirely different script with new ideas.');
@@ -56,7 +57,7 @@ test('quota failure can retry and card updates leave camera preview mounted', as
         })
       : route.fulfill({ json: { points: talkingPoints } });
   });
-  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.locator('#enable-camera').click();
   await expect(page.getByRole('button', { name: 'Start practice' })).toBeEnabled();
   await page.locator('#preview').evaluate((el) => {
     window.previewBeforeCards = el;
@@ -92,7 +93,7 @@ test('pending cards are canceled when the script changes', async ({ page }) => {
   });
   await page.getByRole('button', { name: 'I’ve read my script once' }).click();
   await expect(page.getByText(/Finding your main talking points/)).toBeVisible();
-  await page.getByRole('button', { name: 'Back to script' }).click();
+  await page.getByRole('button', { name: 'Back to preparation' }).click();
   await page.getByLabel('Your practice script').fill('A new script must never display old cards.');
   release();
   await page.getByRole('button', { name: 'Set up my recording' }).click();

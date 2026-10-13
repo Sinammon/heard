@@ -59,7 +59,8 @@ test('calibrated live posture ignores nods, confirms lean, and clears tracking l
     .fill('A simple posture verification speech for this browser test.');
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await page.locator('#consent').check();
-  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.locator('#camera-enabled').check();
+  await page.locator('#enable-camera').click();
   await expect(page.locator('#camera-status')).toContainText('loaded');
   await page.getByRole('button', { name: 'Calibrate posture', exact: true }).click();
   await expect(page.locator('#calibration-status')).toContainText('Baseline ready', {

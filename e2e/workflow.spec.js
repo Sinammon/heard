@@ -23,7 +23,8 @@ test('consented capture, automatic cards, failed AI playback, muted video, and r
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await expect(page.getByRole('button', { name: 'Start practice' })).toBeDisabled();
   await page.locator('#consent').check();
-  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.locator('#camera-enabled').check();
+  await page.locator('#enable-camera').click();
   await expect(page.locator('#camera-status')).toContainText('loaded', { timeout: 20000 });
   expect(await page.locator('#preview').evaluate((el) => getComputedStyle(el).transform)).toBe(
     'matrix(-1, 0, 0, 1, 0, 0)',
@@ -58,9 +59,10 @@ test('consented capture, automatic cards, failed AI playback, muted video, and r
   await expect(page.getByLabel('Your practice script')).toHaveValue(/Today I want/);
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await page.locator('#consent').check();
-  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.locator('#camera-enabled').check();
+  await page.locator('#enable-camera').click();
   await page.getByRole('button', { name: 'Start practice' }).click();
-  await expect(page.locator('.flashcard')).toHaveCount(3);
+  await expect(page.locator('.cue-card')).toContainText('Key point 1 / 3');
   await expect(page.locator('#recording-script')).not.toHaveAttribute('open');
   await expect(page.locator('#timer')).not.toHaveText('00:00');
   await page.getByRole('button', { name: 'Finish practice' }).click();
@@ -232,7 +234,8 @@ test('completed reviews render safe evidence links and streamed coaching', async
     .fill('A short practice script for testing complete reviews and coaching.');
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await page.locator('#consent').check();
-  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.locator('#camera-enabled').check();
+  await page.locator('#enable-camera').click();
   await expect(page.getByRole('button', { name: 'Start practice' })).toBeEnabled();
   await page.getByRole('button', { name: 'Start practice' }).click();
   await expect(page.locator('#timer')).not.toHaveText('00:00', { timeout: 8000 });
@@ -243,7 +246,7 @@ test('completed reviews render safe evidence links and streamed coaching', async
   await expect
     .poll(() => page.locator('#review-player').evaluate((el) => el.currentTime))
     .toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Watch my delivery' }).click();
+  await page.getByRole('button', { name: '2. Watch', exact: true }).click();
   await expect(page.getByText('Your shoulders stayed in view.')).toBeVisible();
   await page.getByRole('button', { name: 'Bring it together', exact: true }).click();
   await page.getByLabel('Ask your speaking coach').fill('What should I practice?');

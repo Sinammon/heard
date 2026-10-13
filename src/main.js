@@ -1,4 +1,6 @@
+import { activePrompt, interviewReview, comparisonView } from './mode-views.js';
 import './style.css';
+import './modes.css';
 import { icon } from './icons.js';
 import { publicPage, demoView } from './pages.js';
 import { api, post, streamChat } from './api.js';
@@ -24,6 +26,19 @@ const state = {
   mode: 'seated',
   practiceMode: 'free',
   memorizationMinutes: 2,
+  cameraEnabled: false,
+  category: 'everyday',
+  difficulty: 'standard',
+  preparation: 30,
+  speakingMinutes: 2,
+  interviewType: 'job',
+  interview: null,
+  impromptuTopic: '',
+  drill: 'pace',
+  drillMinutes: 2,
+  attempts: [],
+  cardIndex: 0,
+  notesVisible: true,
   memorizationRemaining: 0,
   testReady: false,
   consent: false,
@@ -124,13 +139,17 @@ function scriptView() {
   return prepareView(state, head);
 }
 function previewMarkup(recording = false) {
+  if (!state.cameraEnabled)
+    return `<div class="mic-preview"><span class="icon-box">${icon('mic')}</span><h3>${recording ? 'Your voice has the floor.' : 'Just you and your voice.'}</h3><p>${recording ? 'Speak naturally. You can finish whenever you’re ready.' : 'Microphone-only practice. Camera and posture analysis are off.'}</p><div class="level-bars" id="level-bars" aria-label="Microphone activity">${Array.from({ length: 12 }, () => '<span></span>').join('')}</div><span id="tracking" class="sr-only">Camera off</span></div>`;
   return `<div class="video-box preview"><video id="preview" autoplay muted playsinline aria-label="Mirrored camera preview"></video><canvas id="pose-overlay" aria-hidden="true"></canvas>${!state.camera ? `<div class="video-placeholder">${icon('video')}<p>Your camera preview will appear here</p></div>` : ''}<span class="preview-tag">${recording ? 'PRACTICE IN PROGRESS' : 'CAMERA PREVIEW'}</span><div class="preview-bottom"><span class="tracking-label" id="tracking">${state.calibrated ? 'Calibrated to your baseline' : 'Calibrate your neutral posture'}</span><div class="level-bars" id="level-bars" aria-label="Microphone activity">${Array.from({ length: 12 }, () => '<span></span>').join('')}</div></div></div>`;
 }
 function setupView() {
   return sceneView(state, head, previewMarkup) + `<div id="practice-cards">${cardsMarkup()}</div>`;
 }
 function memorizationView() {
-  return `${head('02 / Memorization test', 'Make the ideas stick.', 'Study your script. When the timer reaches zero, your speaking test starts automatically.')}<section class="memorization-layout"><aside class="study-clock"><p class="content-label">Time to memorize</p><strong id="memorization-timer" role="timer" aria-label="Memorization time remaining">${formatTime(state.memorizationRemaining)}</strong><p id="memorization-status" role="status">Your script will be hidden during the test. Only key points remain.</p><button class="button primary" id="begin-test">I’m ready · begin test ${icon('arrow')}</button><button class="text-button" id="cancel-memorization">Cancel memorization</button></aside><article class="study-script"><p class="eyebrow">Your script</p><p>${escape(state.script)}</p></article></section>`;
+  if (state.practiceMode === 'impromptu')
+    return `${head('02 / Impromptu Speaking', 'Take a moment. Find your point.', 'Recording begins automatically when the preparation timer ends.')}<section class="impromptu-study">${activePrompt(state)}<div class="study-clock"><p class="content-label">Time to think</p><strong id="memorization-timer" role="timer">${formatTime(state.memorizationRemaining)}</strong><button class="button primary" id="begin-test">I’m ready · start speaking</button><button class="text-button" id="cancel-memorization">Cancel preparation</button></div></section>`;
+  return `${head('02 / Memorization test', 'Make the ideas stick.', 'Study your script. When the timer reaches zero, your speaking test starts automatically.')}<section class="memorization-layout"><aside class="study-clock"><p class="content-label">Time to memorize</p><strong id="memorization-timer" role="timer" aria-label="Memorization time remaining">${formatTime(state.memorizationRemaining)}</strong><p id="memorization-status" role="status">Your script will be hidden during the test. Only key points remain.</p><button class="button primary" id="begin-test">I’m ready · begin test ${icon('arrow')}</button><button class="button secondary" id="pause-study">${studyClock.pausedRemaining != null ? 'Resume studying' : 'Pause study timer'}</button><button class="text-button" id="cancel-memorization">Cancel memorization</button></aside><article class="study-script"><p class="eyebrow">Your script</p><p>${escape(state.script)}</p></article></section>`;
 }
 const studyClock = new MemorizationClock({
   onTick: (remaining) => {
@@ -143,8 +162,11 @@ const studyClock = new MemorizationClock({
 async function startMemorization() {
   if (state.busy || !state.camera || !state.consent || !state.health?.aiConfigured) return;
   state.readScript = state.script;
+  state.cardIndex = 0;
+  state.notesVisible = true;
   await generateCards();
   if (
+    document.hidden ||
     !state.flashcards.length ||
     state.cardScript !== state.script ||
     !state.camera ||
@@ -169,9 +191,14 @@ function cancelMemorization() {
 }
 
 function recordingView() {
-  return `${head('02 / Practice', 'All yours.', 'Focus on your message. Live measurements are provisional.')}<div class="recording-grid"><section class="recording-main">${previewMarkup(true)}<div class="recording-toolbar"><span class="timer"><i class="recording-dot" aria-hidden="true"></i><span id="timer">00:00</span><small>/ 15:00</small></span><button class="button stop" id="stop-recording">${icon('stop')}Finish practice</button></div>${state.practiceMode === 'memorization' ? `<div id="practice-cards">${cardsMarkup()}</div><p class="test-note">Memorization test · full script hidden. Explain the ideas in your own words.</p>` : `<div id="practice-cards">${cardsMarkup()}</div><details class="script-follow" id="recording-script" ${state.flashcards.length && state.cardScript === state.script ? '' : 'open'}><summary>${state.flashcards.length && state.cardScript === state.script ? 'Show full script' : 'First take · read your script'}</summary><p>${escape(state.script)}</p><p class="local-hint">Finish this take to receive AI talking-point cards for your next practice.</p></details>`}${state.practiceMode !== 'memorization' ? `<section class="panel" style="margin-top:20px;padding:22px"><h3>Live transcript</h3><div class="transcript" id="transcript" aria-live="off">${state.sessionId ? 'Your words will appear as the transcript is finalized.' : 'Live transcription is unavailable. Final AI review uses your recorded audio.'}</div></section>` : ''}</section><aside class="recording-aside"><div class="score-panel"><p class="content-label">Live practice score</p><div class="score-value"><strong id="live-score">—</strong><span id="score-state">Collecting evidence</span></div><div class="score-meter" aria-hidden="true"><span id="score-progress" style="transform:scaleX(0)"></span></div><p id="score-explanation">A score appears after 30 seconds and 50 finalized words. Limited posture tracking produces a partial score.</p></div><div class="live-stats"><div class="stat-row"><span>Filler words</span><strong id="filler-count">—</strong></div><div class="stat-row"><span>Pace · words/min</span><strong id="pace-value">—</strong></div><p class="inline-status" id="pace-feedback">Target 110–180 WPM · pace outside this range lowers your score.</p><div class="stat-row"><span>Posture</span><strong id="posture-value">${state.calibrated ? 'Tracking' : 'Unavailable'}</strong></div><div class="stat-row"><span>Voice activity</span><strong id="voice-value">Listening</strong></div></div><p class="inline-status" id="live-status" role="status" style="margin-top:16px">${state.sessionId ? 'Preparing live transcription…' : 'Final AI analysis is included in this practice.'}</p></aside></div>`;
+  return `${head('02 / Practice', 'All yours.', 'Focus on your message. Live measurements are provisional.')}<div class="recording-grid"><section class="recording-main">${previewMarkup(true)}<div class="recording-toolbar"><span class="timer"><i class="recording-dot" aria-hidden="true"></i><span id="timer">00:00</span><small>/ ${formatTime(recordingLimit())}</small></span><button class="button stop" id="stop-recording">${icon('stop')}Finish practice</button></div>${!['free', 'memorization'].includes(state.practiceMode) ? activePrompt(state) : state.practiceMode === 'memorization' ? `<div id="practice-cards">${cardsMarkup()}</div><p class="test-note">Memorization test · full script hidden. Explain the ideas in your own words.</p>` : `<div id="practice-cards">${cardsMarkup()}</div><details class="script-follow" id="recording-script" ${state.flashcards.length && state.cardScript === state.script ? '' : 'open'}><summary>${state.flashcards.length && state.cardScript === state.script ? 'Show full script' : 'First take · read your script'}</summary><p>${escape(state.script)}</p><p class="local-hint">Finish this take to receive AI talking-point cards for your next practice.</p></details>`}${state.practiceMode !== 'memorization' ? `<section class="panel" style="margin-top:20px;padding:22px"><h3>Live transcript</h3><div class="transcript" id="transcript" aria-live="off">${state.sessionId ? 'Your words will appear as the transcript is finalized.' : 'Live transcription is unavailable. Final AI review uses your recorded audio.'}</div></section>` : ''}</section><aside class="recording-aside"><div class="score-panel"><p class="content-label">Live practice score</p><div class="score-value"><strong id="live-score">—</strong><span id="score-state">Collecting evidence</span></div><div class="score-meter" aria-hidden="true"><span id="score-progress" style="transform:scaleX(0)"></span></div><p id="score-explanation">A score appears after 30 seconds and 50 finalized words. Limited posture tracking produces a partial score.</p></div><div class="live-stats"><div class="stat-row"><span>Filler words</span><strong id="filler-count">—</strong></div><div class="stat-row"><span>Pace · words/min</span><strong id="pace-value">—</strong></div><p class="inline-status" id="pace-feedback">Target 110–180 WPM · pace outside this range lowers your score.</p><div class="stat-row"><span>Posture</span><strong id="posture-value">${state.calibrated ? 'Tracking' : 'Unavailable'}</strong></div><div class="stat-row"><span>Long pauses · live</span><strong id="pause-count">—</strong></div><div class="stat-row"><span>Voice activity</span><strong id="voice-value">Listening</strong></div></div><p class="inline-status" id="live-status" role="status" style="margin-top:16px">${state.sessionId ? 'Preparing live transcription…' : 'Final AI analysis is included in this practice.'}</p></aside></div>`;
 }
 function cardsMarkup() {
+  if (!['free', 'memorization'].includes(state.practiceMode)) return '';
+  if (state.screen === 'recording' && state.flashcards.length) {
+    const point = state.flashcards[state.cardIndex % state.flashcards.length];
+    return `<section class="cue-card"><div class="actions"><span class="content-label">Key point ${state.cardIndex + 1} / ${state.flashcards.length}</span><button class="text-button" data-toggle-notes>${state.notesVisible ? 'Hide notes' : 'Show notes'}</button></div>${state.notesVisible ? `<h2>${escape(point.title)}</h2><p>${escape(point.cue)}</p><div class="actions"><button class="button secondary" data-card-step="-1" ${state.cardIndex === 0 ? 'disabled' : ''}>Previous point</button><button class="button secondary" data-card-step="1" ${state.cardIndex >= state.flashcards.length - 1 ? 'disabled' : ''}>Next point</button></div>` : '<p>Notes hidden. Let the ideas come in your own words.</p>'}</section>`;
+  }
   if (state.cardsStatus === 'loading')
     return `<section class="flashcards-section" aria-live="polite"><p class="content-label">Practice from ideas</p><p><span class="spinner"></span> Finding your main talking points…</p></section>`;
   if (state.flashcards.length && state.cardScript === state.script)
@@ -206,9 +233,12 @@ function invalidateCards() {
     cardsStatus: 'idle',
     cardsError: '',
     readScript: '',
+    cardIndex: 0,
+    notesVisible: true,
   });
 }
 async function generateCards() {
+  if (!['free', 'memorization'].includes(state.practiceMode)) return;
   if (
     !state.consent ||
     !state.health?.aiConfigured ||
@@ -248,6 +278,20 @@ async function generateCards() {
   }
 }
 document.addEventListener('click', (event) => {
+  const step = event.target.closest('[data-card-step]');
+  if (step) {
+    state.cardIndex = Math.min(
+      state.flashcards.length - 1,
+      Math.max(0, state.cardIndex + Number(step.dataset.cardStep)),
+    );
+    refreshCards();
+    document.querySelector(`[data-card-step="${step.dataset.cardStep}"]:not(:disabled)`)?.focus();
+  }
+  if (event.target.closest('[data-toggle-notes]')) {
+    state.notesVisible = !state.notesVisible;
+    refreshCards();
+    document.querySelector('[data-toggle-notes]')?.focus();
+  }
   if (event.target.closest('[data-retry-cards]')) void generateCards();
   // This region can refresh independently while devices and playback stay attached.
   if (event.target.closest('#read-once')) {
@@ -274,7 +318,7 @@ function processingView() {
     ...(state.practiceMode === 'memorization'
       ? [['memory', 'Recall of your script’s main ideas']]
       : []),
-    ['video', 'Visual delivery review'],
+    ...(state.recording?.hasVideo ? [['video', 'Visual delivery review']] : []),
     ['combined', 'Combined coaching report'],
   ]
     .map(([key, label]) => stageItem(key, label))
@@ -286,13 +330,14 @@ function feedbackMarkup(stage) {
   const report = state.report?.stages?.[stage];
   if (!report)
     return `<section class="feedback"><span class="icon-box">${icon(stage === 'audio' ? 'mic' : stage === 'video' ? 'video' : 'chat')}</span><h2 style="margin-top:16px">${state.report?.status === 'processing' ? 'Your review is on its way.' : 'Your recording is ready.'}</h2><p>${escape(state.report?.error || 'AI feedback is unavailable. You can still play your recording and reflect on your delivery.')}</p>${state.report?.status !== 'processing' && state.report?.status !== 'local' ? '<button class="button secondary" id="retry-analysis" style="margin-top:20px">Retry AI analysis</button>' : state.report?.status === 'local' ? '' : '<p class="notice">You can keep listening while the review finishes.</p>'}</section>`;
-  return `<section class="feedback"><h2>${stage === 'audio' ? 'Audio feedback' : stage === 'video' ? 'Visual feedback' : 'Your next step'}</h2><p>${escape(report.summary)}</p>${[
+  return `<section class="feedback"><h2>${stage === 'audio' ? 'Audio feedback' : stage === 'video' ? 'Visual feedback' : 'Your next step'}</h2>${stage === 'combined' ? '' : `<p>${escape(report.summary)}</p>`}${[
     ['strengths', 'What’s working'],
     ['improvements', 'Try this next'],
   ]
     .map(
       ([key, label]) =>
         `<div class="feedback-section"><h3>${label}</h3>${report[key]
+          .slice(0, 3)
           .map(
             (item) =>
               `<article class="feedback-item"><h4>${escape(item.title)}</h4><p>${escape(item.detail)}</p>${item.evidenceIds
@@ -320,7 +365,7 @@ function scoreExplanation(score) {
 }
 function rubricMarkup() {
   const score = state.report?.score;
-  return `<details class="rubric"><summary>How scoring works</summary><p>This is a transparent practice rubric, not a confidence assessment. The final score uses timed speech and can differ from the provisional live score.</p><ul><li>Fillers: up to 25 points for hesitation sounds and clearly bracketed filler phrases. Ambiguous literal uses are excluded where rules can distinguish them.</li><li>Pace: up to 25 points for 20-second windows outside 110–180 words/min.</li><li>Pauses: up to 20 points. Commas target 150–500 ms; sentence endings target 300–900 ms. Missing or overly long pauses increase deductions, as does internal silence beyond 3 seconds.</li><li>Posture: up to 30 points for sustained deviation from your calibrated baseline. Below 80% usable coverage, posture is excluded and the speech categories are normalized to 100 as a partial score.</li></ul>${score ? `<p>Category deductions${score.partial ? ' before partial-score normalization' : ''}: fillers ${score.penalties.filler.toFixed(1)}, pace ${score.penalties.pace.toFixed(1)}, pauses ${score.penalties.pause.toFixed(1)}, posture ${score.partial ? 'excluded' : score.penalties.posture.toFixed(1)}. Posture coverage: ${Math.round(score.coverage.posture * 100)}%.</p>${score.metrics.punctuationPauses != null ? `<p>${score.metrics.naturalPunctuationPauses} of ${score.metrics.punctuationPauses} measured punctuation pauses met the target range. Punctuation comes from your transcript; these ranges are coaching defaults.</p>` : ''}<p>${escape(scoreExplanation(score))}</p>` : '<p>A score needs 30 seconds, 50 timestamped words, and reliable speech timing. Missing posture permits a labeled partial score.</p>'}</details>`;
+  return `<details class="rubric"><summary>How scoring works</summary><p>This is a transparent practice rubric, not a confidence assessment. The final score uses timed speech and can differ from the provisional live score.</p><ul><li>Fillers: up to 25 points for hesitation sounds and clearly bracketed filler phrases. Ambiguous literal uses are excluded where rules can distinguish them.</li><li>Pace: up to 25 points for 20-second windows outside 110–180 words/min.</li><li>Pauses: up to 20 points. Commas target 150–500 ms; sentence endings target 300–900 ms. Missing or overly long pauses increase deductions, as does internal silence beyond 3 seconds.</li><li>Posture: up to 30 points for sustained deviation from your calibrated baseline. Below 80% usable coverage, posture is excluded and the speech categories are normalized to 100 as a partial score.</li></ul>${score ? `<p>Category deductions${score.partial ? ' before partial-score normalization' : ''}: fillers ${score.penalties.filler.toFixed(1)}, pace ${score.penalties.pace.toFixed(1)}, pauses ${score.penalties.pause.toFixed(1)}, posture ${score.partial ? 'excluded' : score.penalties.posture.toFixed(1)}. Posture coverage: ${Math.round(score.coverage.posture * 100)}%.</p>${state.recording?.payload.acoustics.pitchVariation != null ? `<p>Pitch variation: ${state.recording.payload.acoustics.pitchVariation.toFixed(1)} semitones (standard deviation). Descriptive only; microphone quality and speaking style affect this measure. It does not change your score.</p>` : '<p>Pitch variation unavailable: not enough reliable voiced samples.</p>'}${score.metrics.punctuationPauses != null ? `<p>${score.metrics.naturalPunctuationPauses} of ${score.metrics.punctuationPauses} measured punctuation pauses met the target range. Punctuation comes from your transcript; these ranges are coaching defaults.</p>` : ''}<p>${escape(scoreExplanation(score))}</p>` : '<p>A score needs 30 seconds, 50 timestamped words, and reliable speech timing. Missing posture permits a labeled partial score.</p>'}</details>`;
 }
 function chatMarkup() {
   return `<section class="chat"><div class="chat-head"><span class="icon-box">${icon('chat')}</span><div><h3>Your speaking coach</h3><p>A conversation grounded in this practice run.</p></div></div><div class="chat-messages" id="chat-messages" role="log" aria-label="Coaching conversation">${state.chat.length ? state.chat.map((m) => `<div class="chat-message ${m.role}" >${escape(m.text)}</div>`).join('') : '<div class="chat-message">Choose one habit to practice next. Ask about an observation, or request a short exercise.</div>'}</div><div class="chat-suggestions"><button data-question="What is the single most useful thing to practice next?">What should I practice next?</button><button data-question="Give me a two-minute exercise for my biggest improvement area.">Give me a short exercise</button></div><form class="chat-form" id="chat-form"><label class="sr-only" for="chat-input">Ask your speaking coach</label><input id="chat-input" maxlength="2000" placeholder="Ask about your delivery…" required ${!state.report?.stages?.combined ? 'disabled' : ''}><button class="button primary" id="chat-send" ${!state.report?.stages?.combined ? 'disabled' : ''}>Send</button></form></section>`;
@@ -329,7 +374,7 @@ function reviewView() {
   const stage = state.phase,
     score = state.report?.score,
     recording = state.recording;
-  const metrics = score?.metrics;
+  const metrics = state.report?.transcript?.trim() ? score?.metrics : null;
   const visual = state.report?.visualMetrics;
   const title = {
     audio: 'Listen to your words.',
@@ -348,9 +393,9 @@ function reviewView() {
         ? e.category === 'posture'
         : e.category !== 'frame',
   );
-  return `${head('03 / Review', title, desc, formatTime(recording.payload.durationMs))}${memoryFeedbackMarkup()}<nav class="stage-nav" aria-label="Review stages">${[
+  return `${head('03 / Review', title, desc, formatTime(recording.payload.durationMs))}${stage === 'combined' && state.report?.stages?.combined ? `<p class="review-summary">${escape(state.report.stages.combined.summary)}</p>` : ''}<div class="retry-actions"><button class="button primary" id="retry-practice" ${state.busy || state.report?.status === 'processing' ? 'disabled' : ''}>${state.practiceMode === 'interview' ? 'Retry this answer' : state.practiceMode === 'delivery' ? 'Repeat this drill' : 'Try again'}</button>${state.practiceMode === 'impromptu' ? '<button class="button secondary" id="new-topic">Try a new topic</button>' : ''}</div>${interviewReview(state)}${comparisonView(state)}${memoryFeedbackMarkup()}<nav class="stage-nav" aria-label="Review stages">${[
     ['audio', 'mic', 'Listen'],
-    ['video', 'video', 'Watch'],
+    ...(recording.hasVideo ? [['video', 'video', 'Watch']] : []),
     ['combined', 'chat', 'Reflect'],
   ]
     .map(
@@ -359,7 +404,7 @@ function reviewView() {
     )
     .join(
       '',
-    )}</nav>${stage === 'combined' ? `<div class="final-score"><div><strong>${score?.score ?? '—'}</strong>${score?.score !== null && score?.score !== undefined ? '<small> / 100</small>' : ''}</div><div><h3>${score?.score !== null && score?.score !== undefined ? (score.partial ? 'Partial practice score' : 'Your final practice score') : 'Overall score unavailable'}</h3><p>${escape(scoreExplanation(score))}</p></div></div>` : ''}<div class="review-grid"><section>${stage === 'audio' ? `<div class="audio-stage"><p class="content-label">Your recording · audio only</p><div class="waveform" aria-hidden="true">${recording.waveform.map((level) => `<span style="--h:${4 + level * 60}px"></span>`).join('')}</div><audio id="review-player" controls src="${recording.audioUrl}" aria-label="Audio-only practice playback"></audio></div>` : `<div class="video-box"><video id="review-player" controls playsinline ${stage === 'video' ? 'muted' : ''} src="${recording.videoUrl}" aria-label="${stage === 'video' ? 'Muted visual' : 'Combined audio-video'} practice playback"></video></div>`}<p class="media-caption">${stage === 'video' ? 'Sound stays off in this stage. Playback is unmirrored, as your audience would see you.' : stage === 'audio' ? 'Audio-only playback from this browser.' : 'Full video is played from your browser; it has not been uploaded.'}</p><div class="metrics-grid">${stage === 'video' ? metric('Tracked delivery', visual ? `${Math.round(visual.coverage * 100)}%` : '—', 'Usable pose coverage') + metric('Alignment shift', visual?.deviationPercent != null ? `${Math.round(visual.deviationPercent)}%` : '—', visual?.upperBodyOnly > 0 ? 'Includes upper-body approximation' : 'Of tracked time') + metric('Practice mode', recording.payload.mode === 'seated' ? 'Seated' : 'Standing', 'Your selected setup') : metric('Delivery pace', metrics ? `${Math.round(metrics.wpm)}` : '—', '110–180 WPM target') + metric('Filler words', metrics ? metrics.fillers : '—', 'Hesitations and filler phrases') + metric('Pause cues', metrics ? metrics.pauses : '—', 'Punctuation and long gaps')}</div>${
+    )}</nav>${stage === 'combined' ? `<div class="final-score"><div><strong>${score?.score ?? '—'}</strong>${score?.score !== null && score?.score !== undefined ? '<small> / 100</small>' : ''}</div><div><h3>${score?.score !== null && score?.score !== undefined ? (score.partial ? 'Partial practice score' : 'Your final practice score') : 'Overall score unavailable'}</h3><p>${escape(scoreExplanation(score))}</p></div></div>` : ''}<div class="review-grid"><section>${stage === 'audio' || !recording.hasVideo ? `<div class="audio-stage"><p class="content-label">Your recording · audio only</p><div class="waveform" aria-hidden="true">${recording.waveform.map((level) => `<span style="--h:${4 + level * 60}px"></span>`).join('')}</div><audio id="review-player" controls src="${recording.audioUrl}" aria-label="Audio-only practice playback"></audio></div>` : `<div class="video-box"><video id="review-player" controls playsinline ${stage === 'video' ? 'muted' : ''} src="${recording.videoUrl}" aria-label="${stage === 'video' ? 'Muted visual' : 'Combined audio-video'} practice playback"></video></div>`}<p class="media-caption">${stage === 'video' ? 'Sound stays off in this stage. Playback is unmirrored, as your audience would see you.' : stage === 'audio' || !recording.hasVideo ? 'Audio-only playback from this browser.' : 'Full video is played from your browser; it has not been uploaded.'}</p><div class="metrics-grid">${stage === 'video' ? metric('Tracked delivery', visual ? `${Math.round(visual.coverage * 100)}%` : '—', 'Usable pose coverage') + metric('Alignment shift', visual?.deviationPercent != null ? `${Math.round(visual.deviationPercent)}%` : '—', visual?.upperBodyOnly > 0 ? 'Includes upper-body approximation' : 'Of tracked time') + metric('Practice mode', recording.payload.mode === 'seated' ? 'Seated' : 'Standing', 'Your selected setup') : metric('Delivery pace', metrics ? `${Math.round(metrics.wpm)}` : '—', '110–180 WPM target') + metric('Filler words', metrics ? metrics.fillers : '—', 'Hesitations and filler phrases') + metric(state.practiceMode === 'delivery' ? 'Long pauses' : 'Pause cues', metrics ? (state.practiceMode === 'delivery' ? (state.report.evidence || []).filter((e) => e.category === 'pause' && e.endMs - e.startMs > 3000).length : metrics.pauses) : '—', state.practiceMode === 'delivery' ? 'Gaps longer than 3 seconds' : 'Punctuation and long gaps')}${state.practiceMode === 'delivery' && stage !== 'video' ? metric('Vocal variation', recording.payload.acoustics.pitchVariation != null ? `${recording.payload.acoustics.pitchVariation.toFixed(1)} st` : '—', 'Pitch spread · descriptive only') : ''}</div>${
     events.length
       ? `<section class="timeline"><h3>Moments to revisit</h3><div class="timeline-items">${events
           .slice(0, 30)
@@ -369,7 +414,7 @@ function reviewView() {
           )
           .join('')}</div></section>`
       : ''
-  }${stage === 'combined' ? rubricMarkup() + chatMarkup() : `<details class="rubric"><summary>${stage === 'audio' ? 'Read the complete transcript' : 'How posture feedback is measured'}</summary><p>${stage === 'audio' ? escape(state.report?.transcript || 'The transcript will appear after Gemini finishes audio processing.') : 'Measurements compare visible head, shoulder, and torso alignment with your neutral baseline. Low-visibility frames are excluded; this does not measure your internal confidence.'}</p></details>`}${state.report?.cleanupWarning ? `<p class="notice error">${escape(state.report.cleanupWarning)}</p>` : ''}<div class="review-actions"><button class="button secondary" id="reset">${icon('reset')}New practice</button>${stage !== 'combined' ? `<button class="button primary" data-phase="${stage === 'audio' ? 'video' : 'combined'}">${stage === 'audio' ? 'Watch my delivery' : 'Bring it together'}</button>` : ''}</div></section>${feedbackMarkup(stage)}</div><div id="practice-cards">${cardsMarkup()}</div><p class="footer-note">${icon('shield')}Your local recording is cleared when you reset or close this page. Google’s data-use terms apply to cloud processing.</p>`;
+  }${stage === 'combined' ? rubricMarkup() + chatMarkup() : `<details class="rubric"><summary>${stage === 'audio' ? 'Read the complete transcript' : 'How posture feedback is measured'}</summary><p>${stage === 'audio' ? escape(state.report?.transcript || 'The transcript will appear after Gemini finishes audio processing.') : 'Measurements compare visible head, shoulder, and torso alignment with your neutral baseline. Low-visibility frames are excluded; this does not measure your internal confidence.'}</p></details>`}${state.report?.cleanupWarning ? `<p class="notice error">${escape(state.report.cleanupWarning)}</p>` : ''}<div class="review-actions"><button class="button secondary" id="reset">${icon('reset')}New practice</button>${stage !== 'combined' ? `<button class="button primary" data-phase="${stage === 'audio' && recording.hasVideo ? 'video' : 'combined'}">${stage === 'audio' && recording.hasVideo ? 'Watch my delivery' : 'Bring it together'}</button>` : ''}</div></section>${feedbackMarkup(stage)}</div><div id="practice-cards">${cardsMarkup()}</div><p class="footer-note">${icon('shield')}Your local recording is cleared when you reset or close this page. Google’s data-use terms apply to cloud processing.</p>`;
 }
 function memoryFeedbackMarkup() {
   if (state.practiceMode !== 'memorization') return '';
@@ -486,6 +531,8 @@ function bind() {
   document.querySelectorAll('input[name="practice-mode"]').forEach((input) =>
     input.addEventListener('change', () => {
       state.practiceMode = input.value;
+      state.impromptuTopic = '';
+      state.cardIndex = 0;
       saveDraft(state);
       render();
       document.querySelector(`input[name="practice-mode"][value="${state.practiceMode}"]`)?.focus();
@@ -498,18 +545,65 @@ function bind() {
     saveDraft(state);
   });
   on('begin-test', 'click', () => void beginTest());
+  on('pause-study', 'click', () => {
+    if (studyClock.pausedRemaining != null) studyClock.resume();
+    else studyClock.pause();
+    render();
+    $('pause-study')?.focus();
+  });
   on('cancel-memorization', 'click', cancelMemorization);
   on('back-script', 'click', async () => {
     await state.media?.dispose();
     state.camera = false;
     state.calibrated = false;
+    if (state.interview) {
+      const id = state.sessionId;
+      state.sessionId = null;
+      state.interview = null;
+      if (id) void api(`/api/sessions/${id}`, { method: 'DELETE' }).catch(() => {});
+    }
     navigate('script');
   });
   on('enable-camera', 'click', () => enableCamera());
   on('calibrate', 'click', calibrateCamera);
-  on('start-recording', 'click', () =>
-    state.practiceMode === 'memorization' ? startMemorization() : startRecording(),
+  on('start-recording', 'click', startPractice);
+  on('retry-practice', 'click', () =>
+    state.practiceMode === 'interview'
+      ? interviewAction({ action: 'retry', index: state.interview.index })
+      : retryPractice(),
   );
+  on('new-topic', 'click', () => {
+    state.impromptuTopic = '';
+    void retryPractice();
+  });
+  on('next-question', 'click', () => interviewAction({ action: 'next' }));
+  on('finish-interview', 'click', () => interviewAction({ action: 'finish' }));
+  document
+    .querySelectorAll('[data-retry-answer]')
+    .forEach((button) =>
+      button.addEventListener('click', () =>
+        interviewAction({ action: 'retry', index: Number(button.dataset.retryAnswer) }),
+      ),
+    );
+  document.querySelectorAll('[data-option]').forEach((input) =>
+    input.addEventListener('change', () => {
+      const key = input.dataset.option;
+      state[key] = ['preparation', 'speakingMinutes', 'drillMinutes'].includes(key)
+        ? Number(input.value)
+        : input.value;
+      state.impromptuTopic = '';
+      render();
+      $(key)?.focus();
+    }),
+  );
+  on('camera-enabled', 'change', async (event) => {
+    state.cameraEnabled = event.target.checked;
+    state.camera = false;
+    state.calibrated = false;
+    await state.media?.dispose();
+    render();
+    $('camera-enabled')?.focus();
+  });
   on('stop-recording', 'click', () => stopRecording());
   on('consent', 'change', (event) => {
     state.consent = event.target.checked;
@@ -584,7 +678,10 @@ function navigate(screen) {
 }
 function attachPreview() {
   const video = $('preview');
-  if (!video || !state.media?.stream) return;
+  if (!video || !state.media?.stream) {
+    if (state.screen === 'setup' && state.camera) void fillDevices();
+    return;
+  }
   state.media.video = video;
   video.srcObject = state.media.stream;
   video.play().catch(() => {});
@@ -600,7 +697,7 @@ async function fillDevices() {
     ['audio-device', 'audioinput', 'audio'],
   ]) {
     const select = $(id);
-    if (!select) return;
+    if (!select) continue;
     select.innerHTML = devices
       .filter((d) => d.kind === kind)
       .map(
@@ -630,6 +727,10 @@ async function enableCamera(devices = {}) {
       onPose: updatePose,
       onAudio: (data) => {
         updateLevel(data.rms);
+        if ($('pause-count'))
+          $('pause-count').textContent = state.media.events.filter(
+            (event) => event.category === 'pause',
+          ).length;
         if ($('voice-value')) $('voice-value').textContent = data.active ? 'Speaking' : 'Quiet';
       },
       onScore: updateScore,
@@ -666,16 +767,18 @@ async function enableCamera(devices = {}) {
       },
     });
     state.media.mode = state.mode;
-    await state.media.prepare($('preview'), devices);
+    await state.media.prepare($('preview'), { ...devices, camera: state.cameraEnabled });
     state.camera = true;
-    state.cameraStatus = 'Camera and microphone ready';
+    state.cameraStatus = state.cameraEnabled
+      ? 'Camera and microphone ready'
+      : 'Microphone ready · camera off';
   } catch (error) {
     state.camera = false;
     state.error =
       error.name === 'NotAllowedError'
         ? 'Camera or microphone access was denied. Allow access in your browser, then try again.'
         : error.name === 'NotFoundError'
-          ? 'No camera or microphone was found. Connect both devices and try again.'
+          ? 'No camera or microphone was found. Connect a microphone, or turn off the optional camera and try again.'
           : error.message;
     await state.media?.dispose();
   } finally {
@@ -783,6 +886,142 @@ function updateScore(score) {
         ? 'Target 110–180 WPM · waiting for finalized speech.'
         : `${score.pace < 110 ? 'Below target · try a steadier pace' : score.pace > 180 ? 'Above target · give each idea more space' : 'Pace is in the target range'} · 110–180 WPM. Final deductions use 20-second windows.`;
 }
+function recordingLimit() {
+  return (
+    60000 *
+    (state.practiceMode === 'impromptu'
+      ? state.speakingMinutes
+      : state.practiceMode === 'interview'
+        ? 3
+        : state.practiceMode === 'delivery'
+          ? state.drillMinutes
+          : 15)
+  );
+}
+function sessionPractice() {
+  if (state.practiceMode === 'memorization')
+    return { mode: 'memorization', script: state.script, minutes: state.memorizationMinutes };
+  if (state.practiceMode === 'impromptu')
+    return {
+      mode: 'impromptu',
+      topic: state.impromptuTopic,
+      category: state.category,
+      difficulty: state.difficulty,
+      preparation: state.preparation,
+      minutes: state.speakingMinutes,
+    };
+  if (state.practiceMode === 'interview')
+    return { mode: 'interview', type: state.interviewType, difficulty: state.difficulty };
+  if (state.practiceMode === 'delivery')
+    return { mode: 'delivery', drill: state.drill, minutes: state.drillMinutes };
+  return { mode: 'free' };
+}
+async function startPractice() {
+  if (state.busy || !state.camera || !state.consent || !state.health?.aiConfigured) return;
+  if (state.practiceMode === 'memorization') return startMemorization();
+  if (state.practiceMode === 'impromptu') {
+    state.busy = true;
+    state.error = '';
+    render();
+    try {
+      if (!state.impromptuTopic) {
+        const result = await post('/api/topics', {
+          cloudConsent: true,
+          category: state.category,
+          difficulty: state.difficulty,
+        });
+        if (
+          typeof result.topic !== 'string' ||
+          result.topic.length < 10 ||
+          result.topic.length > 600
+        )
+          throw new Error('The topic was incomplete. Try again.');
+        state.impromptuTopic = result.topic;
+      }
+      state.busy = false;
+      if (document.hidden)
+        throw new Error('Return to this tab and start preparation when you’re ready.');
+      if (!state.camera) throw new Error('Reconnect your microphone to begin.');
+      state.memorizationRemaining = state.preparation * 1000;
+      navigate('memorizing');
+      studyClock.startSeconds(state.preparation);
+    } catch (error) {
+      state.busy = false;
+      state.error = error.message;
+      render();
+    }
+    return;
+  }
+  if (state.practiceMode === 'interview' && !state.interview?.question)
+    return interviewAction({ action: 'next' });
+  return startRecording();
+}
+async function interviewAction(action) {
+  if (state.busy || !state.consent) return;
+  state.busy = true;
+  state.error = '';
+  render();
+  try {
+    if (!state.sessionId) {
+      const session = await post('/api/sessions', {
+        cloudConsent: true,
+        practice: sessionPractice(),
+      });
+      if (typeof session.id !== 'string') throw new Error('Interview session unavailable.');
+      state.sessionId = session.id;
+    }
+    const result = await post(`/api/sessions/${state.sessionId}/interview`, action);
+    if (!Array.isArray(result.turns) || typeof result.question !== 'string')
+      throw new Error('The interview response was incomplete. Retry.');
+    state.interview = result;
+    if (action.action !== 'finish') {
+      generation++;
+      clearTimeout(poll);
+      chatController?.abort();
+      if (state.recording) {
+        URL.revokeObjectURL(state.recording.videoUrl);
+        URL.revokeObjectURL(state.recording.audioUrl);
+      }
+      state.recording = null;
+      state.report = null;
+      state.chat = [];
+      state.screen = 'setup';
+    }
+  } catch (error) {
+    state.error = error.message;
+  } finally {
+    state.busy = false;
+    render();
+  }
+}
+function rememberAttempt() {
+  if (
+    state.practiceMode !== 'delivery' ||
+    !state.report?.transcript ||
+    !state.report?.score?.metrics ||
+    state.attempts.some((a) => a.session === state.sessionId)
+  )
+    return;
+  const metrics = state.report.score.metrics;
+  const minutes = state.recording.payload.durationMs / 60000;
+  state.attempts.push({
+    session: state.sessionId,
+    drill: state.drill,
+    wpm: metrics.wpm,
+    fillers: metrics.fillers / minutes,
+    pauses: metrics.pauses / minutes,
+  });
+  state.attempts = state.attempts.slice(-20);
+}
+async function retryPractice() {
+  if (state.busy) return;
+  const consent = state.consent;
+  await reset();
+  state.consent = consent;
+  state.cardIndex = 0;
+  state.notesVisible = true;
+  navigate('setup');
+}
 async function startRecording() {
   if (state.busy || !state.camera || !state.consent || !state.health?.aiConfigured) return;
   if (state.practiceMode === 'memorization' && !state.testReady) return;
@@ -793,25 +1032,25 @@ async function startRecording() {
       throw new Error(
         'A recording device disconnected. Reconnect devices before starting the test.',
       );
-    const session = await post('/api/sessions', {
-      cloudConsent: true,
-      practice:
-        state.practiceMode === 'memorization'
-          ? { mode: 'memorization', script: state.script, minutes: state.memorizationMinutes }
-          : { mode: 'free' },
-    });
+    const session =
+      state.practiceMode === 'interview' && state.sessionId
+        ? { id: state.sessionId }
+        : await post('/api/sessions', { cloudConsent: true, practice: sessionPractice() });
     if (typeof session?.id !== 'string')
       throw new Error('The practice session could not be created. Please try again.');
     state.sessionId = session?.id || null;
+    if (document.hidden) throw new Error('Return to this tab before starting your recording.');
     state.transcript = '';
     state.interim = '';
     state.busy = false;
     navigate('recording');
-    state.media.start(state.sessionId, true);
+    state.media.start(state.sessionId, true, recordingLimit());
   } catch (e) {
-    if (state.sessionId)
-      void api(`/api/sessions/${state.sessionId}`, { method: 'DELETE' }).catch(() => {});
-    state.sessionId = null;
+    if (state.practiceMode !== 'interview') {
+      if (state.sessionId)
+        void api(`/api/sessions/${state.sessionId}`, { method: 'DELETE' }).catch(() => {});
+      state.sessionId = null;
+    }
     state.screen = 'setup';
     state.busy = false;
     state.error = e.message;
@@ -897,8 +1136,20 @@ async function pollReport(token) {
     ]);
     state.report = result;
     if (result.status !== 'processing') {
+      rememberAttempt();
+      if (
+        state.practiceMode === 'interview' &&
+        state.interview &&
+        result.transcript &&
+        result.stages.audio
+      )
+        state.interview.turns[state.interview.index] = {
+          question: state.interview.question,
+          transcript: result.transcript,
+          review: result.stages.audio,
+        };
       if (state.screen === 'processing') {
-        state.phase = 'audio';
+        state.phase = result.stages?.combined ? 'combined' : 'audio';
         state.screen = 'review';
       }
       render();
@@ -1008,6 +1259,7 @@ async function reset() {
     chat: [],
     phase: 'audio',
     consent: false,
+    interview: null,
     transcript: '',
     interim: '',
   });
@@ -1037,12 +1289,22 @@ function revealSections() {
 }
 
 function bindPublic() {
+  document.querySelectorAll('[data-open-mode]').forEach((button) =>
+    button.addEventListener('click', () => {
+      if (state.screen === 'script' && !state.busy) {
+        state.practiceMode = button.dataset.openMode;
+        saveDraft(state);
+      }
+      void goPage('studio');
+    }),
+  );
   $('practice-launcher')?.addEventListener('submit', (event) => {
     event.preventDefault();
     if (state.screen !== 'script' || state.busy) {
       goPage('studio');
       return;
     }
+    state.practiceMode = 'free';
     const topic = $('practice-topic').value.trim();
     if (topic) {
       state.topic = topic;
@@ -1094,7 +1356,9 @@ async function goPage(next, updateHistory = true, section = '') {
     if (location.hash !== '#studio') history.replaceState(null, '', '#studio');
     state.error =
       state.screen === 'memorizing'
-        ? 'Cancel memorization before leaving the Studio.'
+        ? state.practiceMode === 'impromptu'
+          ? 'Cancel preparation before leaving the Studio.'
+          : 'Cancel memorization before leaving the Studio.'
         : state.screen === 'recording'
           ? 'Finish your practice before leaving the Studio.'
           : 'Wait for the current Studio action to finish.';
@@ -1153,11 +1417,17 @@ document.addEventListener('visibilitychange', () => {
   if (document.hidden && state.screen === 'memorizing') {
     cancelMemorization();
     state.error =
-      'Memorization canceled when this tab became hidden. Start again when you’re ready.';
+      'Preparation canceled when this tab became hidden. Start again when you’re ready.';
     render();
   }
   if (document.hidden && state.screen === 'recording')
     void stopRecording('Practice stopped because this tab became hidden.');
+});
+window.addEventListener('beforeunload', (event) => {
+  if (state.media?.running || state.screen === 'memorizing' || state.busy) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
 });
 window.addEventListener('pagehide', () => {
   state.media?.dispose();

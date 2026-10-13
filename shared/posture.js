@@ -106,6 +106,15 @@ export function deviation(m, b, mode) {
       magnitude: 0,
       hint: b ? 'Tracking lost · move into frame' : 'Calibrate your upright posture',
     };
+  // A change in camera distance/framing invalidates the calibrated geometry.
+  // Image translation alone cannot establish a bent back, especially without hips.
+  if (!Number.isFinite(m.width) || m.width / b.width < 0.75 || m.width / b.width > 1.3)
+    return {
+      valid: false,
+      deviation: false,
+      magnitude: 0,
+      hint: 'Framing changed · return to position or recalibrate',
+    };
   const shoulder = angleDifference(m.shoulderAngle, b.shoulderAngle) / 12;
   let magnitude = shoulder,
     reason = 'Shoulders tilted · return to your baseline';
@@ -140,14 +149,10 @@ export function deviation(m, b, mode) {
         Math.max(0, (b.torsoLength - m.torsoLength) / b.torsoLength) / 0.22,
         'Torso lowered · sit or stand comfortably upright',
       );
-  } else if (mode === 'seated' && b.width > 0) {
-    // Upper-body approximation: a nod alone must never become a back warning.
-    const shoulderDrop = Math.max(0, (m.shoulderY - b.shoulderY) / b.width) / 0.22;
-    const headDrop = Math.max(0, (m.noseY - b.noseY) / b.width) / 0.25;
-    consider(Math.min(shoulderDrop, headDrop), 'Upper body lowered · check your seated position');
-    const sideways = Math.abs(m.shoulderX - b.shoulderX) / b.width / 0.4;
-    consider(sideways, 'Upper body shifted · return to your baseline');
   }
+  // Without visible hips, only shoulder alignment is supported. Absolute head and
+  // shoulder movement may be chair movement or camera reframing, not slouching.
+
   return {
     valid: true,
     limited: !hasTorso,

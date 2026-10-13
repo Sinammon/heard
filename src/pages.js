@@ -1,3 +1,4 @@
+import { PRACTICE_MODES } from '../shared/practice.js';
 import { icon } from './icons.js';
 import { brand, mark } from './brand.js';
 
@@ -36,10 +37,17 @@ export function demoView(phase = 'audio') {
   return `<div class="demo-copy"><span class="icon-box">${icon(item.icon)}</span><h3>${item.title}</h3><p>${item.text}</p><p class="demo-annotation">${icon('arrow')}${item.annotation}</p></div><div class="demo-example"><span class="eyebrow">Illustrative example · not an AI review</span>${exampleVisual(key)}</div>`;
 }
 
+function modesOverview() {
+  return `<section class="home-modes" aria-labelledby="modes-heading"><div class="section-heading"><p class="eyebrow">Make room for your voice</p><h2 id="modes-heading">A little practice.<br>A different possibility.</h2><p>Pick a focus. Speak out loud. Leave with one useful next step.</p></div><div class="home-mode-list">${PRACTICE_MODES.map((mode, index) => `<button data-open-mode="${mode.id}"><span class="content-label">0${index + 1}</span><span><strong>${mode.title}</strong><small>${mode.description}</small></span>${icon('arrow')}</button>`).join('')}</div></section>`;
+}
 function journey() {
   return `<ol class="practice-journey">${[
     ['edit', 'Prepare your script', 'Write your own words or shape an AI draft around your idea.'],
-    ['mic', 'Practice your speech', 'Read through or test your memory with a few key points.'],
+    [
+      'mic',
+      'Practice your speech',
+      'Use a script, answer a question, or work on one delivery habit.',
+    ],
     [
       'headphones',
       'Review your delivery',
@@ -62,10 +70,10 @@ function footer() {
 }
 
 function home() {
-  return `<section class="landing-hero" id="home"><div class="hero-logo" aria-hidden="true">${mark}</div><div class="hero-copy"><p class="eyebrow">Your speaking studio</p><h1>A little practice.<br>A <em>clearer</em> voice.</h1><p class="hero-description">Practice a speech. Get feedback on your pace, pauses, and delivery.</p><form id="practice-launcher" class="practice-launcher"><label for="practice-topic">What are you practicing for?</label><div class="launcher-input"><input id="practice-topic" name="practice-topic" autocomplete="off" maxlength="400" placeholder="A presentation, an introduction, an idea…"><button class="button primary" id="enter" type="submit">Start practicing ${icon('arrow')}</button></div><div class="occasion-options"><button type="button" data-topic="Introduce an idea to my class">Class presentation</button><button type="button" data-topic="Introduce myself to someone new">An introduction</button><button type="button" data-topic="Explain something I care about">An idea</button></div></form><div class="hero-baseline"><span>${icon('clock')}Up to 15 minutes</span><span>${icon('shield')}Full video stays on your device</span></div><p class="hero-disclosure">AI review required · audio and selected images are shared.</p></div></section><section class="how-section" id="how-it-works"><div class="section-heading"><div><p class="eyebrow">How it works</p><h2>A little practice.<br>A useful next step.</h2></div><a class="text-link" href="#studio">Start practicing ${icon('arrow')}</a></div>${journey()}<div class="experience"><div class="experience-toolbar"><span class="content-label">One take. Three perspectives.</span><div role="tablist" aria-label="Explore review stages">${['audio', 'video', 'combined'].map((phase, i) => `<button role="tab" id="demo-tab-${phase}" data-demo="${phase}" aria-controls="demo-panel" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${icon(examples[phase].icon)}${phase === 'audio' ? 'Listen' : phase === 'video' ? 'Watch' : 'Reflect'}</button>`).join('')}</div></div><div id="demo-panel" class="demo-panel" role="tabpanel" aria-labelledby="demo-tab-audio" tabindex="0">${demoView()}</div></div></section><section class="faq-section"><div><p class="eyebrow">Before you start</p><h2>A few essentials.</h2></div><div class="faq-list">${[
+  return `<section class="landing-hero" id="home"><div class="hero-logo" aria-hidden="true">${mark}</div><div class="hero-copy"><p class="eyebrow">Your speaking studio</p><h1>A little practice.<br>A <em>clearer</em> voice.</h1><p class="hero-description">Practice a speech. Get feedback on your pace, pauses, and delivery.</p><form id="practice-launcher" class="practice-launcher"><label for="practice-topic">What are you practicing for?</label><div class="launcher-input"><input id="practice-topic" name="practice-topic" autocomplete="off" maxlength="400" placeholder="A presentation, an introduction, an idea…"><button class="button primary" id="enter" type="submit">Start practicing ${icon('arrow')}</button></div><div class="occasion-options"><button type="button" data-topic="Introduce an idea to my class">Class presentation</button><button type="button" data-topic="Introduce myself to someone new">An introduction</button><button type="button" data-topic="Explain something I care about">An idea</button></div></form><div class="hero-baseline"><span>${icon('clock')}Up to 15 minutes</span><span>${icon('shield')}Full video stays on your device</span></div><p class="hero-disclosure">AI review included · microphone required · camera optional.</p></div></section>${modesOverview()}<section class="how-section" id="how-it-works"><div class="section-heading"><div><p class="eyebrow">How it works</p><h2>A little practice.<br>A useful next step.</h2></div><a class="text-link" href="#studio">Start practicing ${icon('arrow')}</a></div>${journey()}<div class="experience"><div class="experience-toolbar"><span class="content-label">One take. Three perspectives.</span><div role="tablist" aria-label="Explore review stages">${['audio', 'video', 'combined'].map((phase, i) => `<button role="tab" id="demo-tab-${phase}" data-demo="${phase}" aria-controls="demo-panel" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}">${icon(examples[phase].icon)}${phase === 'audio' ? 'Listen' : phase === 'video' ? 'Watch' : 'Reflect'}</button>`).join('')}</div></div><div id="demo-panel" class="demo-panel" role="tabpanel" aria-labelledby="demo-tab-audio" tabindex="0">${demoView()}</div></div></section><section class="faq-section"><div><p class="eyebrow">Before you start</p><h2>A few essentials.</h2></div><div class="faq-list">${[
     [
       'What do I need?',
-      'A camera, microphone, and desktop Chrome or Edge. Write a script or generate an AI draft. Choose free practice or a timed memorization test.',
+      'A microphone and desktop Chrome or Edge. Camera is optional. Choose from five modes: scripts, memory, impromptu speaking, interviews, or delivery drills.',
     ],
     [
       'Is AI review required?',

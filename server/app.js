@@ -1,3 +1,4 @@
+import { registerPracticeRoutes } from './practice-routes.js';
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
 import multipart from '@fastify/multipart';
@@ -187,9 +188,12 @@ export async function buildApp({
     return { status: s.status, jobId: s.jobId, ...s.report, error: s.error };
   });
   let activeJobs = 0;
+  registerPracticeRoutes(app, { provider, limited, requireSession });
   app.post('/api/sessions/:id/analyze', async (request, reply) => {
     const s = requireSession(request);
     limited(request, 'analysis', 5);
+    if (s.interviewBusy || (s.practice.mode === 'interview' && !s.interview?.question))
+      return reply.code(409).send({ error: 'Prepare an interview question first.' });
     if (s.status === 'processing' || s.status === 'complete')
       return reply.code(202).send({ jobId: s.jobId, status: s.status });
     if (activeJobs >= 3)
@@ -321,6 +325,14 @@ export async function buildApp({
               {
                 transcript: s.transcript.text,
                 ...(payload.memorization ? { memorization: payload.memorization } : {}),
+                ...(s.practice.mode !== 'memorization'
+                  ? {
+                      practice: {
+                        ...s.practice,
+                        ...(s.interview ? { question: s.interview.question } : {}),
+                      },
+                    }
+                  : {}),
                 durationMs: payload.durationMs,
                 metrics: speechMetrics,
                 acoustics: payload.acoustics,
@@ -357,7 +369,9 @@ export async function buildApp({
           }
         } else if (!s.transcript) s.report.stageStatus.memory = 'skipped';
       }
-      if (!s.report.stages.video) {
+      const hasVisualEvidence = payload.frames.length > 0;
+      if (!hasVisualEvidence) s.report.stageStatus.video = 'skipped';
+      if (hasVisualEvidence && !s.report.stages.video) {
         try {
           s.report.stages.video = await attempt('video', () =>
             provider.review(
@@ -383,7 +397,11 @@ export async function buildApp({
           errors.push(publicProviderError(e));
         }
       }
-      if (s.report.stages.audio && s.report.stages.video && !s.report.stages.combined) {
+      if (
+        s.report.stages.audio &&
+        (!hasVisualEvidence || s.report.stages.video) &&
+        !s.report.stages.combined
+      ) {
         try {
           s.report.stages.combined = await attempt('combined', () =>
             provider.review(
@@ -407,7 +425,7 @@ export async function buildApp({
           errors.push(publicProviderError(e));
         }
       }
-      if (!s.report.stages.audio || !s.report.stages.video)
+      if (!s.report.stages.audio || (hasVisualEvidence && !s.report.stages.video))
         s.report.stageStatus.combined = 'skipped';
       signal.throwIfAborted();
       outcome = errors.length ? 'partial' : 'complete';

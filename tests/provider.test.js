@@ -187,3 +187,39 @@ describe('Gemini adapter', () => {
     await expect(consume()).resolves.toBeUndefined();
   });
 });
+
+it('generates structured topics and grounded interview questions without storing interactions', async () => {
+  const provider = new GeminiProvider({ GEMINI_API_KEY: 'test-key' });
+  provider.run = (fn) => fn();
+  let request;
+  provider.ai.interactions.create = async (input) => {
+    request = input;
+    return {
+      output_text: JSON.stringify({ question: 'What did you learn from organizing that garden?' }),
+    };
+  };
+  const input = {
+    type: 'job',
+    difficulty: 'standard',
+    turns: [{ question: 'Tell me about teamwork.', transcript: 'We planted a garden.' }],
+    number: 2,
+  };
+  expect((await provider.practicePrompt('question', input)).question).toContain('garden');
+  expect(request.store).toBe(false);
+  expect(request.system_instruction).toContain('actual preceding answers');
+  expect(JSON.parse(request.input).turns[0].transcript).toBe('We planted a garden.');
+  provider.ai.interactions.create = async (input) => {
+    request = input;
+    return {
+      output_text: JSON.stringify({ topic: 'Would you rather learn a craft or a language?' }),
+    };
+  };
+  expect(
+    (await provider.practicePrompt('topic', { category: 'everyday', difficulty: 'easy' })).topic,
+  ).toContain('craft');
+  expect(request.system_instruction).toContain('never a script');
+  provider.ai.interactions.create = async () => ({ output_text: 'not JSON' });
+  await expect(provider.practicePrompt('topic', {})).rejects.toMatchObject({
+    code: 'INVALID_OUTPUT',
+  });
+});

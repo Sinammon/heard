@@ -26,6 +26,7 @@ test('fifteen-minute settings persist and partial reviews explain omitted postur
     route.fulfill({
       json: {
         status: 'complete',
+        transcript: 'word '.repeat(140),
         score,
         evidence: [],
         stages: { audio: feedback, video: feedback, combined: feedback },
@@ -47,7 +48,8 @@ test('fifteen-minute settings persist and partial reviews explain omitted postur
   await expect(page.getByLabel('Talk length')).toHaveValue('15');
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await page.locator('#consent').check();
-  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.locator('#camera-enabled').check();
+  await page.locator('#enable-camera').click();
   await expect(page.locator('#camera-status')).toContainText('loaded', { timeout: 20000 });
   await page.getByRole('button', { name: 'Start practice' }).click();
   await expect(page.locator('.timer')).toContainText('/ 15:00');

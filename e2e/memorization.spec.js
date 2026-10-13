@@ -31,7 +31,8 @@ async function prepare(page) {
   await page.getByLabel('Your practice script').fill(script);
   await page.getByRole('button', { name: 'Set up my recording' }).click();
   await page.locator('#consent').check();
-  await page.getByRole('button', { name: 'Enable camera & microphone' }).click();
+  await page.locator('#camera-enabled').check();
+  await page.locator('#enable-camera').click();
   await expect(page.getByRole('button', { name: 'Start memorizing' })).toBeEnabled();
 }
 
@@ -68,7 +69,9 @@ test('countdown starts the speaking test automatically with only key points and 
   await expect(page.getByRole('button', { name: 'Finish practice' })).toHaveCount(0);
   await page.clock.setSystemTime(epoch + 61000);
   await expect(page.getByRole('button', { name: 'Finish practice' })).toBeVisible();
-  await expect(page.locator('.flashcard')).toHaveCount(3);
+  await expect(page.locator('.cue-card')).toContainText('Key point 1 / 3');
+  await page.getByRole('button', { name: 'Next point' }).click();
+  await expect(page.locator('.cue-card')).toContainText('Key point 2 / 3');
   await expect(page.locator('#recording-script')).toHaveCount(0);
   await expect(page.locator('#transcript')).toHaveCount(0);
   await expect(page.locator('#workspace')).not.toContainText(script);
@@ -77,6 +80,7 @@ test('countdown starts the speaking test automatically with only key points and 
   await page.getByRole('button', { name: 'Finish practice' }).click();
   await expect(page.getByRole('heading', { name: 'What stayed with you?' })).toBeVisible();
   await expect(page.locator('.memory-review')).toContainText('weekly learning example was missing');
+  await page.getByRole('button', { name: '1. Listen', exact: true }).click();
   await expect(page.locator('audio')).toBeVisible();
   await page
     .getByRole('navigation', { name: 'Main navigation' })
@@ -156,5 +160,5 @@ test('a device disconnect cancels study and offers recovery before recording', a
   await expect(page.getByRole('timer')).toHaveCount(0);
   await expect(page.getByRole('alert')).toContainText('device disconnected');
   await expect(page.getByRole('button', { name: 'Start memorizing' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Enable camera & microphone' })).toBeEnabled();
+  await expect(page.locator('#enable-camera')).toBeEnabled();
 });

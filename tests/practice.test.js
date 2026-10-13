@@ -48,3 +48,26 @@ it('validates mode-specific session data and preserves free-practice clients', (
   expect(practiceMode('memorization').startLabel).toBe('Start memorizing');
   expect(practiceMode('unknown').id).toBe('free');
 });
+
+it('pauses study time without consuming it and resumes the remaining deadline', () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(0);
+  const onExpire = vi.fn();
+  const clock = new MemorizationClock({ onExpire });
+  clock.start(1);
+  vi.advanceTimersByTime(20000);
+  clock.pause();
+  vi.advanceTimersByTime(120000);
+  expect(onExpire).not.toHaveBeenCalled();
+  clock.resume();
+  vi.advanceTimersByTime(39999);
+  expect(onExpire).not.toHaveBeenCalled();
+  vi.advanceTimersByTime(1);
+  expect(onExpire).toHaveBeenCalledOnce();
+  clock.start(1);
+  clock.pause();
+  clock.cancel();
+  clock.resume();
+  vi.advanceTimersByTime(120000);
+  expect(onExpire).toHaveBeenCalledOnce();
+});

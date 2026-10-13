@@ -71,8 +71,10 @@ describe('posture geometry and calibration', () => {
     expect(deviation(measurement({ hips: false, noseDrop: 0.09 }), b, 'seated').deviation).toBe(
       false,
     );
-    expect(deviation(measurement({ hips: false, drop: 0.09 }), b, 'seated').deviation).toBe(true);
-    expect(deviation(measurement({ hips: false, shiftX: 0.15 }), b, 'seated').deviation).toBe(true);
+    expect(deviation(measurement({ hips: false, drop: 0.09 }), b, 'seated').deviation).toBe(false);
+    expect(deviation(measurement({ hips: false, shiftX: 0.15 }), b, 'seated').deviation).toBe(
+      false,
+    );
     expect(deviation(measurement({ hips: false }), baseline(), 'seated')).toMatchObject({
       valid: true,
       limited: true,
@@ -127,4 +129,17 @@ describe('stable live posture feedback', () => {
     episodes.update({ timeMs: 5000, valid: true, deviation: true });
     expect(episodes.events).toHaveLength(0);
   });
+});
+
+it('does not classify camera scale changes or whole-person translation as a bent back', () => {
+  const b = baseline();
+  expect(deviation({ ...measurement(), width: b.width * 1.4 }, b, 'seated').valid).toBe(false);
+  const translated = pose().map((p) => (p ? { ...p, x: p.x + 0.1, y: p.y + 0.05 } : null));
+  expect(
+    deviation(measurements(translated, 'standing', 16 / 9, world()), b, 'standing').deviation,
+  ).toBe(false);
+  expect(
+    deviation(measurement({ hips: false, tilt: 18 }), baseline({ hips: false }), 'seated')
+      .deviation,
+  ).toBe(true);
 });

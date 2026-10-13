@@ -34,3 +34,42 @@ No deployment credentials or deployment project metadata are present in this che
   local configuration. Real-device calibration, live transcription, and AI accuracy remain unverified.
 - GitHub push is blocked by missing Git authentication. Local Git author name/email are also
   unconfigured; no identity or credentials were invented. Changes are staged for review and commit.
+
+## Version 4: five-mode studio audit and design
+
+The existing app has two working modes, shared media capture, deterministic scoring,
+and isolated audio / video / recall reviews. The current setup unnecessarily requests
+a camera; visual review runs even without images. The studio repeats script UI for
+every task, and the review emphasizes a large score before useful feedback.
+
+Implementation direction: one five-mode registry; tailored preparation panels; a
+shared consent → microphone (optional camera) → practice sequence; timed impromptu
+preparation; a server-owned three-question interview with transcript-grounded
+follow-ups and individual retries; focused delivery drills with local attempt
+comparison. Keep existing free practice, memory tests, flashcards and scoring.
+
+Use the warm editorial design, compact mode navigation and summary-first reviews.
+Treat camera loss and changed framing conservatively. Never infer confidence,
+posture or missing speech. Interview history comes from canonical server transcripts,
+not client-supplied answers. AI failures remain visible and retryable.
+
+Validation covers schema bounds, timed transitions, session ownership, interview
+context, microphone-only analysis, resource cleanup, posture geometry and browser
+flows across five modes, keyboard and narrow screens. Live Gemini and real cameras
+remain separate manual checks. Work is isolated on version-4 because version-3 exists.
+
+### Completed validation
+
+- `npm run build`: production frontend built with cached, matching MediaPipe assets.
+- `npm test`: 101 tests passed, including bounded mode inputs, second-based preparation,
+  study pause/resume, mode recording timers, owned interview history/follow-ups/retries,
+  provider output validation, audio-only review isolation, and conservative posture geometry.
+- `PLAYWRIGHT_EXECUTABLE_PATH='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' npm run test:e2e`:
+  28 checks passed. Covered five mode flows, 320/390/768/1280px layouts, active capture/review,
+  consent, optional camera, device denial/disconnect, automatic countdown transitions,
+  flashcard navigation, retry/comparison, safe rendering and streamed coaching.
+- Inspected generated desktop/mobile screenshots. UI fixtures are explicitly synthetic;
+  no live Gemini requests or real-device posture accuracy claims are part of this validation.
+
+The previous release remains on main; this update is isolated on version-4. The pre-existing
+local `.env.example` change is excluded. Nothing was merged, pushed or deployed.
