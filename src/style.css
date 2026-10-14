@@ -3993,3 +3993,286 @@ html {
     transition: none;
   }
 }
+
+/* A small product preview replaces the oversized mark with the speaking-practice loop. */
+.hero-visualizer--journey {
+  width: min(100%, 420px);
+  max-width: 420px;
+  justify-self: center;
+  color: var(--ink);
+}
+.hero-visualizer__frame {
+  padding: 22px;
+  border: 1px solid #e3e1da;
+  border-radius: 12px;
+  background: white;
+  transition:
+    border-color 220ms ease,
+    transform 220ms ease;
+}
+.hero-visualizer--journey:hover .hero-visualizer__frame {
+  transform: translateY(-2px);
+}
+.hero-visualizer__topline,
+.hero-visualizer__wave-caption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.hero-visualizer__topline {
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.hero-visualizer__kicker {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.hero-visualizer__steps-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.74rem;
+  white-space: nowrap;
+}
+.hero-visualizer__steps-count i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.hero-visualizer__wave-panel {
+  margin-top: 17px;
+  padding: 14px 14px 11px;
+  border-radius: 9px;
+  background: #f3f2ee;
+}
+.hero-visualizer__wave-caption {
+  color: #66685f;
+  font-size: 0.69rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+}
+.hero-visualizer__wave-caption span:last-child {
+  color: #8a8b83;
+  font-size: 0.63rem;
+  letter-spacing: 0.1em;
+}
+.hero-logo .hero-visualizer__wave-svg {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  margin-top: 8px;
+  overflow: hidden;
+}
+.hero-visualizer__axis {
+  fill: none;
+  stroke: #d2d0c8;
+  stroke-width: 1;
+}
+.hero-visualizer__bars .hero-visualizer__bar {
+  fill: var(--accent);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hero-breathe 2.8s ease-in-out var(--bar-delay, 0s) infinite;
+  transition: transform 90ms ease-out;
+}
+.hero-visualizer__bars .hero-visualizer__bar--soft {
+  fill: #c37a5e;
+}
+.hero-visualizer__cursor {
+  fill: var(--ink);
+  animation: hero-scan 5.8s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+.hero-visualizer__cursor path {
+  stroke: currentColor;
+  stroke-width: 1.4;
+  opacity: 0.42;
+}
+.hero-visualizer__cursor circle {
+  stroke: white;
+  stroke-width: 1.4;
+}
+.hero-visualizer__wave-note {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.77rem;
+  line-height: 1.4;
+}
+.hero-visualizer__journey {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.hero-visualizer__journey::before {
+  position: absolute;
+  top: 13px;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: #dedcd5;
+  content: '';
+}
+.hero-visualizer__journey li {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.hero-visualizer__step-marker {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  border: 1px solid #dedcd5;
+  border-radius: 50%;
+  background: white;
+  color: #6e7068;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+  animation: hero-step-glow 5.4s ease-in-out infinite;
+}
+.hero-visualizer__journey li:nth-child(2) .hero-visualizer__step-marker {
+  animation-delay: 1.8s;
+}
+.hero-visualizer__journey li:nth-child(3) .hero-visualizer__step-marker {
+  animation-delay: 3.6s;
+}
+.hero-visualizer.is-awake .hero-visualizer__frame {
+  animation: hero-frame-wake 900ms ease-out;
+}
+.hero-visualizer.is-awake .hero-visualizer__cursor {
+  animation-duration: 900ms;
+}
+.hero-visualizer--compact .hero-visualizer__wave-svg {
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  overflow: hidden;
+}
+.hero-visualizer--compact .hero-visualizer__bar {
+  animation-delay: var(--bar-delay, 0s);
+}
+@keyframes hero-scan {
+  0% {
+    transform: translateX(0);
+    opacity: 0.35;
+  }
+  12%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(380px);
+    opacity: 0.35;
+  }
+}
+@keyframes hero-step-glow {
+  0%,
+  24% {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+    outline: 4px solid rgb(236 87 46 / 12%);
+    transform: translateY(-2px);
+  }
+  34%,
+  100% {
+    border-color: #dedcd5;
+    background: white;
+    color: #6e7068;
+    outline: 0 solid transparent;
+    transform: translateY(0);
+  }
+}
+@keyframes hero-frame-wake {
+  0%,
+  100% {
+    border-color: #e3e1da;
+    transform: translateY(0);
+  }
+  38% {
+    border-color: #d89a7d;
+    transform: translateY(-3px);
+  }
+}
+@media (max-width: 650px) {
+  .hero-logo.hero-visualizer--journey {
+    justify-self: start;
+    max-width: 100%;
+  }
+  .hero-visualizer__frame {
+    padding: 15px;
+  }
+  .hero-visualizer__wave-panel {
+    margin-top: 13px;
+    padding: 12px 11px 9px;
+  }
+}
+@media (max-width: 380px) {
+  .hero-visualizer__frame {
+    padding: 12px;
+  }
+  .hero-visualizer__journey li {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-visualizer__bar,
+  .hero-visualizer__cursor,
+  .hero-visualizer__step-marker,
+  .hero-visualizer.is-awake .hero-visualizer__frame {
+    animation: none;
+    transition: none;
+  }
+  .hero-visualizer--journey:hover .hero-visualizer__frame {
+    transform: none;
+  }
+}
+
+@media (min-width: 651px) and (max-width: 800px) {
+  .landing-hero {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.6fr);
+    gap: 24px;
+  }
+  .hero-logo.hero-visualizer--journey {
+    justify-self: start;
+    max-width: 100%;
+  }
+  .hero-visualizer__frame {
+    padding: 14px;
+  }
+  .hero-visualizer__wave-caption {
+    flex-wrap: wrap;
+    font-size: 0.64rem;
+  }
+  .hero-visualizer__journey li {
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-visualizer__bars .hero-visualizer__bar {
+    animation: none;
+  }
+}

@@ -6,7 +6,7 @@ welcoming and enough restraint to keep attention on the user's talk.
 
 ## Information architecture
 
-Home (`#home`), Our approach (`#about`), and Studio (`#studio`) are separate routed pages with shared sticky navigation. Home keeps the bare orange mark on the left, a brief promise, one topic launcher, a review explorer, and essential FAQ. Privacy detail lives on Our approach and at the point of consent.
+Home (`#home`), Our approach (`#about`), and Studio (`#studio`) are separate routed pages with shared sticky navigation. Home uses an animated practice-loop preview in place of the oversized mark: a breathing waveform and Speak → Listen → Improve path tied to pace, pauses, and delivery. It remains illustrative until the user enters Studio and enables the consented microphone. The page pairs this preview with a brief promise, one topic launcher, a review explorer, and essential FAQ. Privacy detail lives on Our approach and at the point of consent.
 
 Studio is a focused Prepare → Practice → Review environment. A shared registry defines Free practice and Memorization test. A timed test studies a manual or generated script for 1–30 minutes, then automatically records with only AI key points visible. Early start, cancel, retry, and device failure states are explicit. Recall feedback compares the transcript with the source script separately from delivery reviews and deterministic scoring.
 

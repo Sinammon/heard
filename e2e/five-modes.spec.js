@@ -95,6 +95,14 @@ test('five modes are discoverable and fit narrow screens with optional camera', 
   await mockReviews(page);
   await page.goto('/');
   await expect(page.locator('[data-open-mode]')).toHaveCount(5);
+  await expect(page.locator('[data-hero-visualizer]')).toHaveAttribute('role', 'img');
+  await expect(page.locator('[data-hero-visualizer] [data-visualizer-bar]')).toHaveCount(31);
+  await expect(page.locator('.hero-visualizer__journey')).toContainText('Speak');
+  await expect(page.locator('.hero-visualizer__journey')).toContainText('Listen');
+  await expect(page.locator('.hero-visualizer__journey')).toContainText('Improve');
+  await expect(page.locator('.hero-visualizer__wave-caption')).toContainText(
+    'PACE · PAUSES · DELIVERY',
+  );
   await page.screenshot({ path: 'test-results/heard-home-desktop.png', fullPage: true });
   await page.locator('[data-open-mode="delivery"]').click();
   await expect(page.getByRole('radio', { name: 'Delivery Coach' })).toBeChecked();

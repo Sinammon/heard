@@ -26,7 +26,7 @@ test('consented capture, automatic cards, failed AI playback, muted video, and r
   await page.locator('#camera-enabled').check();
   await page.locator('#enable-camera').click();
   await expect(page.locator('#camera-status')).toContainText('loaded', { timeout: 20000 });
-  await expect(page.locator('[data-mic-sync] svg [data-visualizer-bar]')).toHaveCount(5);
+  await expect(page.locator('[data-mic-sync] svg [data-visualizer-bar]')).toHaveCount(7);
   expect(await page.locator('#preview').evaluate((el) => getComputedStyle(el).transform)).toBe(
     'matrix(-1, 0, 0, 1, 0, 0)',
   );
