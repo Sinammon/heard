@@ -6,31 +6,31 @@ export const PRACTICE_MODES = Object.freeze([
   {
     id: 'free',
     title: 'Free practice',
-    description: 'Use your script or talking points. Focus on delivery.',
+    description: 'Use a script or key points.',
     startLabel: 'Start practice',
   },
   {
     id: 'memorization',
     title: 'Memorization test',
-    description: 'Study against the clock, then speak from key points.',
+    description: 'Study, then speak from key points.',
     startLabel: 'Start memorizing',
   },
   {
     id: 'impromptu',
     title: 'Impromptu Speaking',
-    description: 'One surprise topic. Find your point on the spot.',
+    description: 'Find your point on the spot.',
     startLabel: 'Prepare my topic',
   },
   {
     id: 'interview',
     title: 'AI Interview',
-    description: 'Answer questions and thoughtful follow-ups.',
+    description: 'Practice questions and follow-ups.',
     startLabel: 'Start interview',
   },
   {
     id: 'delivery',
     title: 'Delivery Coach',
-    description: 'Build one speaking habit, one take at a time.',
+    description: 'Practice one speaking habit.',
     startLabel: 'Start my drill',
   },
 ]);
