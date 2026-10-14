@@ -7,3 +7,5 @@ export const MAX_POSE_SAMPLES = 10000;
 export const MAX_SCRIPT_CHARS = 30000;
 // 10,000 pose samples plus twenty bounded JPEG data URLs and optional script.
 export const MAX_ANALYSIS_FIELD_BYTES = 5 * 1024 * 1024;
+// Bounds both the provider queue wait and Gemini's response time for script drafts.
+export const SCRIPT_DRAFT_TIMEOUT_MS = 45_000;

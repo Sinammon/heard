@@ -1,3 +1,5 @@
+import { SCRIPT_DRAFT_TIMEOUT_MS } from '../shared/limits.js';
+
 const networkMessage = 'The studio could not be reached. Check your connection and try again.';
 
 async function responseJson(response) {
@@ -17,7 +19,13 @@ async function responseJson(response) {
   return value;
 }
 
-export async function api(path, { timeoutMs = 180000, ...options } = {}) {
+export async function api(
+  path,
+  {
+    timeoutMs = path === '/api/scripts' ? SCRIPT_DRAFT_TIMEOUT_MS + 5000 : 180000,
+    ...options
+  } = {},
+) {
   const timeout = AbortSignal.timeout(timeoutMs);
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout;
   try {
@@ -35,7 +43,12 @@ export async function api(path, { timeoutMs = 180000, ...options } = {}) {
     if (response.status === 204) return null;
     return await responseJson(response);
   } catch (error) {
-    if (timeout.aborted) throw new Error('The studio took too long to respond. Please try again.');
+    if (timeout.aborted)
+      throw new Error(
+        path === '/api/scripts'
+          ? 'Drafting took too long. Your current script is unchanged; try again.'
+          : 'The studio took too long to respond. Please try again.',
+      );
     if (error instanceof TypeError) throw new Error(networkMessage);
     throw error;
   }

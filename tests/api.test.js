@@ -33,6 +33,20 @@ describe('API recovery', () => {
     );
     await expect(api('/api/health')).rejects.toThrow(/Check your connection/);
   });
+  it('turns a script request deadline into a recoverable draft message', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_path, { signal }) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+          }),
+      ),
+    );
+    await expect(api('/api/scripts', { timeoutMs: 10 })).rejects.toThrow(
+      /current script is unchanged; try again/i,
+    );
+  });
   it('accepts a final NDJSON record without a trailing newline', async () => {
     mockResponse('{"text":"Try a breath."}\n{"done":true}', {
       headers: { 'Content-Type': 'application/x-ndjson' },

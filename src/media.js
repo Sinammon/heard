@@ -97,6 +97,14 @@ export class PracticeMedia {
     this.source = this.context.createMediaStreamSource(this.stream);
     this.source.connect(this.capture);
     this.capture.connect(this.context.destination);
+    this.analyser = this.context.createAnalyser();
+    this.analyser.fftSize = 256;
+    this.analyser.smoothingTimeConstant = 0.35;
+    this.visualizerGain = this.context.createGain();
+    this.visualizerGain.gain.value = 0;
+    this.source.connect(this.analyser);
+    this.analyser.connect(this.visualizerGain);
+    this.visualizerGain.connect(this.context.destination);
     this.audioWorker = new Worker(new URL('./audio-worker.js', import.meta.url), {
       type: 'module',
     });
@@ -517,6 +525,8 @@ export class PracticeMedia {
     this.poseWorker?.terminate();
     this.audioWorker?.terminate();
     this.source?.disconnect();
+    this.analyser?.disconnect();
+    this.visualizerGain?.disconnect();
     this.capture?.disconnect();
     for (const track of this.stream?.getTracks() || []) track.stop();
     if (this.context && this.context.state !== 'closed') await this.context.close();

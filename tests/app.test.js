@@ -44,6 +44,22 @@ async function setup(provider = fakeProvider(), practice = { mode: 'free' }) {
   });
   return { app, id: response.json().id, cookie: response.headers['set-cookie'].split(';')[0] };
 }
+it('bounds the entire draft request and returns an actionable timeout', async () => {
+  const provider = fakeProvider();
+  provider.script = (_input, signal) =>
+    new Promise((resolve, reject) => {
+      signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    });
+  const app = await buildApp({ provider, serveStatic: false, draftTimeoutMs: 15 });
+  apps.push(app);
+  const response = await app.inject({
+    method: 'POST',
+    url: '/api/scripts',
+    payload: { topic: 'A small daily habit', audience: 'My classmates', duration: 2 },
+  });
+  expect(response.statusCode).toBe(504);
+  expect(response.json().error).toMatch(/current script is unchanged; try again/i);
+});
 it('rejects cross-origin changes and requires cloud disclosure acknowledgment', async () => {
   const { app } = await setup();
   expect(

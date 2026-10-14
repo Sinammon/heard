@@ -3913,3 +3913,83 @@ html {
     background: white;
   }
 }
+
+/* Branded voice visualizer: a quiet idle pulse, with mic levels supplied by the local analyser. */
+.hero-visualizer {
+  color: var(--accent);
+}
+.hero-visualizer__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.hero-visualizer__arc,
+.hero-visualizer__bar {
+  fill: currentColor;
+}
+.hero-visualizer__bar {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: hero-breathe 2.8s ease-in-out infinite;
+  transition: transform 90ms ease-out;
+}
+.hero-visualizer__bar:nth-child(1),
+.hero-visualizer__bar:nth-child(5) {
+  animation-delay: -1.25s;
+}
+.hero-visualizer__bar:nth-child(2),
+.hero-visualizer__bar:nth-child(4) {
+  animation-delay: -0.55s;
+}
+.hero-visualizer__bar:nth-child(3) {
+  animation-delay: -1.8s;
+}
+.hero-visualizer.is-listening .hero-visualizer__bar {
+  animation: none;
+  transform: scaleY(var(--bar-level, 0.2));
+}
+.hero-visualizer.is-awake .hero-visualizer__svg {
+  animation: hero-wake 720ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+.hero-visualizer--compact {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  color: var(--accent);
+}
+.hero-visualizer--compact .hero-visualizer__svg {
+  height: 100%;
+}
+.preview-bottom .hero-visualizer--compact {
+  width: 42px;
+  height: 36px;
+  color: #f5a07a;
+}
+@keyframes hero-breathe {
+  0%,
+  100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(0.82);
+  }
+}
+@keyframes hero-wake {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.06) rotate(-1.5deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-visualizer__bar,
+  .hero-visualizer.is-awake .hero-visualizer__svg {
+    animation: none;
+    transition: none;
+  }
+}

@@ -80,7 +80,7 @@ test('countdown starts the speaking test automatically with only key points and 
   await page.getByRole('button', { name: 'Finish practice' }).click();
   await expect(page.getByRole('heading', { name: 'What stayed with you?' })).toBeVisible();
   await expect(page.locator('.memory-review')).toContainText('weekly learning example was missing');
-  await page.getByRole('button', { name: '1. Listen', exact: true }).click();
+  await page.getByRole('button', { name: '1. Voice feedback', exact: true }).click();
   await expect(page.locator('audio')).toBeVisible();
   await page
     .getByRole('navigation', { name: 'Main navigation' })

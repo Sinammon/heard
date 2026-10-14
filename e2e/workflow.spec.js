@@ -26,6 +26,7 @@ test('consented capture, automatic cards, failed AI playback, muted video, and r
   await page.locator('#camera-enabled').check();
   await page.locator('#enable-camera').click();
   await expect(page.locator('#camera-status')).toContainText('loaded', { timeout: 20000 });
+  await expect(page.locator('[data-mic-sync] svg [data-visualizer-bar]')).toHaveCount(5);
   expect(await page.locator('#preview').evaluate((el) => getComputedStyle(el).transform)).toBe(
     'matrix(-1, 0, 0, 1, 0, 0)',
   );
@@ -45,14 +46,14 @@ test('consented capture, automatic cards, failed AI playback, muted video, and r
       page.locator('audio').evaluate((el) => Number.isFinite(el.duration) && el.duration > 0),
     )
     .toBe(true);
-  await page.getByRole('button', { name: 'Watch my delivery' }).click();
+  await page.getByRole('button', { name: 'Continue to visual feedback' }).click();
   await expect(page.locator('#review-player')).toBeVisible();
   expect(await page.locator('#review-player').evaluate((el) => el.muted)).toBe(true);
   await page.locator('#review-player').evaluate((el) => {
     el.muted = false;
   });
   await expect.poll(() => page.locator('#review-player').evaluate((el) => el.muted)).toBe(true);
-  await page.getByRole('button', { name: 'Bring it together', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue to summary', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Overall score unavailable' })).toBeVisible();
   await expect(page.locator('#chat-input')).toBeDisabled();
   await page.getByRole('button', { name: 'New practice' }).click();
@@ -86,6 +87,29 @@ test('script generation and quota errors are visible without exposing a key', as
   await page.getByLabel('What would you like to talk about?').fill('Learning a new skill');
   await page.getByRole('button', { name: 'Generate a draft' }).click();
   await expect(page.getByRole('alert')).toContainText('quota');
+  await expect(page.getByRole('button', { name: 'Generate a draft' })).toBeEnabled();
+});
+test('a timed-out draft preserves the current script and offers retry', async ({ page }) => {
+  await page.route('**/api/health', (route) =>
+    route.fulfill({ json: { ok: true, aiConfigured: true } }),
+  );
+  await page.route('**/api/scripts', (route) =>
+    route.fulfill({
+      status: 504,
+      json: {
+        error: 'Drafting took too long. Your current script is unchanged; try again.',
+      },
+    }),
+  );
+  await page.goto('/#studio');
+  await page.getByLabel('Your practice script').fill('Keep this draft while retrying.');
+  await page.getByRole('tab', { name: 'Draft with AI' }).click();
+  await page.getByLabel('What would you like to talk about?').fill('A new daily habit');
+  await page.getByRole('button', { name: 'Generate a draft' }).click();
+  await expect(page.getByRole('alert')).toContainText('current script is unchanged');
+  await expect(page.getByLabel('Your practice script')).toHaveValue(
+    'Keep this draft while retrying.',
+  );
   await expect(page.getByRole('button', { name: 'Generate a draft' })).toBeEnabled();
 });
 test('layout fits a small viewport and respects keyboard access', async ({ page }) => {
@@ -242,13 +266,17 @@ test('completed reviews render safe evidence links and streamed coaching', async
   await page.getByRole('button', { name: 'Finish practice' }).click();
   await expect(page.getByText('Give the transition some space')).toBeVisible();
   expect(await page.evaluate(() => window.bad)).toBeUndefined();
+  await expect(page.getByRole('heading', { name: 'Listen to your words.' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: '1. Voice feedback', exact: true }),
+  ).toHaveAttribute('aria-current', 'step');
   await page.getByRole('button', { name: 'At 00:00', exact: true }).click();
   await expect
     .poll(() => page.locator('#review-player').evaluate((el) => el.currentTime))
     .toBeGreaterThan(0);
-  await page.getByRole('button', { name: '2. Watch', exact: true }).click();
+  await page.getByRole('button', { name: '2. Visual feedback', exact: true }).click();
   await expect(page.getByText('Your shoulders stayed in view.')).toBeVisible();
-  await page.getByRole('button', { name: 'Bring it together', exact: true }).click();
+  await page.getByRole('button', { name: 'Continue to summary', exact: true }).click();
   await page.getByLabel('Ask your speaking coach').fill('What should I practice?');
   await page.getByRole('button', { name: 'Send', exact: true }).click();
   await expect(page.getByText('Start with one clear idea.')).toBeVisible();

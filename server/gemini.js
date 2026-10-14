@@ -109,6 +109,8 @@ export function outputText(interaction) {
 }
 export function publicProviderError(error) {
   if (error?.name === 'AbortError') return 'Analysis cancelled.';
+  if (error?.code === 'SCRIPT_DRAFT_TIMEOUT')
+    return 'Drafting took too long. Your current script is unchanged; try again.';
   if (error?.code === 'MISSING_KEY')
     return 'Add GEMINI_API_KEY to the server .env file to enable AI.';
   if (error?.code === 'QUOTA' || error?.status === 429 || error?.statusCode === 429)

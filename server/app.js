@@ -24,12 +24,14 @@ import {
   MAX_RECORDING_MS,
   MAX_EVIDENCE_MS,
   MAX_ANALYSIS_FIELD_BYTES,
+  SCRIPT_DRAFT_TIMEOUT_MS,
 } from '../shared/limits.js';
 
 export async function buildApp({
   store = new SessionStore(),
   env = process.env,
   provider = new GeminiProvider(env),
+  draftTimeoutMs = SCRIPT_DRAFT_TIMEOUT_MS,
   serveStatic = true,
 } = {}) {
   const app = Fastify({ logger: false, bodyLimit: 4 * 1024 * 1024 });
@@ -135,10 +137,21 @@ export async function buildApp({
     limited(request, 'scripts', 3);
     const input = scriptSchema.parse(request.body);
     const controller = new AbortController();
+    const deadline = AbortSignal.timeout(draftTimeoutMs);
+    const signal = AbortSignal.any([controller.signal, deadline]);
     reply.raw.on('close', () => {
       if (!reply.raw.writableEnded) controller.abort();
     });
-    return { script: await provider.script(input, controller.signal) };
+    try {
+      return { script: await provider.script(input, signal) };
+    } catch (error) {
+      if (deadline.aborted)
+        throw Object.assign(new Error('Script drafting timed out.'), {
+          code: 'SCRIPT_DRAFT_TIMEOUT',
+          statusCode: 504,
+        });
+      throw error;
+    }
   });
   app.post('/api/flashcards', async (request, reply) => {
     limited(request, 'flashcards', 3);

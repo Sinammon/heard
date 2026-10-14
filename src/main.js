@@ -8,6 +8,11 @@ import { PracticeMedia } from './media.js';
 import { escape, wordCount, readingTime } from './text.js';
 import { loadDraft, saveDraft } from './draft.js';
 import { scriptView as prepareView, setupView as sceneView } from './studio-views.js';
+import {
+  heroVisualizerMarkup,
+  pulseHeroVisualizer,
+  syncHeroVisualizers,
+} from './hero-visualizer.js';
 import { MAX_SCRIPT_CHARS } from '../shared/limits.js';
 import { parseReport } from '../shared/reports.js';
 import { flashcardsSchema } from '../shared/flashcards.js';
@@ -120,6 +125,7 @@ function render() {
     document.querySelector('.recording-grid').before(toolbar);
   }
   bind();
+  syncHeroVisualizers(state.media?.analyser ?? null);
   if (
     state.screen === 'recording' ||
     (['setup', 'memorizing'].includes(state.screen) && state.camera)
@@ -140,8 +146,8 @@ function scriptView() {
 }
 function previewMarkup(recording = false) {
   if (!state.cameraEnabled)
-    return `<div class="mic-preview"><span class="icon-box">${icon('mic')}</span><h3>${recording ? 'Your voice has the floor.' : 'Just you and your voice.'}</h3><p>${recording ? 'Speak naturally. You can finish whenever you’re ready.' : 'Microphone-only practice. Camera and posture analysis are off.'}</p><div class="level-bars" id="level-bars" aria-label="Microphone activity">${Array.from({ length: 12 }, () => '<span></span>').join('')}</div><span id="tracking" class="sr-only">Camera off</span></div>`;
-  return `<div class="video-box preview"><video id="preview" autoplay muted playsinline aria-label="Mirrored camera preview"></video><canvas id="pose-overlay" aria-hidden="true"></canvas>${!state.camera ? `<div class="video-placeholder">${icon('video')}<p>Your camera preview will appear here</p></div>` : ''}<span class="preview-tag">${recording ? 'PRACTICE IN PROGRESS' : 'CAMERA PREVIEW'}</span><div class="preview-bottom"><span class="tracking-label" id="tracking">${state.calibrated ? 'Calibrated to your baseline' : 'Calibrate your neutral posture'}</span><div class="level-bars" id="level-bars" aria-label="Microphone activity">${Array.from({ length: 12 }, () => '<span></span>').join('')}</div></div></div>`;
+    return `<div class="mic-preview">${heroVisualizerMarkup({ compact: true })}<h3>${recording ? 'Your voice has the floor.' : 'Just you and your voice.'}</h3><p>${recording ? 'Speak naturally. You can finish whenever you’re ready.' : 'Microphone-only practice. Camera and posture analysis are off.'}</p><span id="tracking" class="sr-only">Camera off</span></div>`;
+  return `<div class="video-box preview"><video id="preview" autoplay muted playsinline aria-label="Mirrored camera preview"></video><canvas id="pose-overlay" aria-hidden="true"></canvas>${!state.camera ? `<div class="video-placeholder">${icon('video')}<p>Your camera preview will appear here</p></div>` : ''}<span class="preview-tag">${recording ? 'PRACTICE IN PROGRESS' : 'CAMERA PREVIEW'}</span><div class="preview-bottom"><span class="tracking-label" id="tracking">${state.calibrated ? 'Calibrated to your baseline' : 'Calibrate your neutral posture'}</span>${heroVisualizerMarkup({ compact: true })}</div></div>`;
 }
 function setupView() {
   return sceneView(state, head, previewMarkup) + `<div id="practice-cards">${cardsMarkup()}</div>`;
@@ -393,10 +399,10 @@ function reviewView() {
         ? e.category === 'posture'
         : e.category !== 'frame',
   );
-  return `${head('03 / Review', title, desc, formatTime(recording.payload.durationMs))}${stage === 'combined' && state.report?.stages?.combined ? `<p class="review-summary">${escape(state.report.stages.combined.summary)}</p>` : ''}<div class="retry-actions"><button class="button primary" id="retry-practice" ${state.busy || state.report?.status === 'processing' ? 'disabled' : ''}>${state.practiceMode === 'interview' ? 'Retry this answer' : state.practiceMode === 'delivery' ? 'Repeat this drill' : 'Try again'}</button>${state.practiceMode === 'impromptu' ? '<button class="button secondary" id="new-topic">Try a new topic</button>' : ''}</div>${interviewReview(state)}${comparisonView(state)}${memoryFeedbackMarkup()}<nav class="stage-nav" aria-label="Review stages">${[
-    ['audio', 'mic', 'Listen'],
-    ...(recording.hasVideo ? [['video', 'video', 'Watch']] : []),
-    ['combined', 'chat', 'Reflect'],
+  return `${head('03 / Review', title, desc, formatTime(recording.payload.durationMs))}${stage === 'combined' && state.report?.stages?.combined ? `<p class="review-summary">${escape(state.report.stages.combined.summary)}</p>` : ''}<div class="retry-actions"><button class="button primary" id="retry-practice" ${state.busy || state.report?.status === 'processing' ? 'disabled' : ''}>${state.practiceMode === 'interview' ? 'Retry this answer' : state.practiceMode === 'delivery' ? 'Repeat this drill' : 'Try again'}</button>${state.practiceMode === 'impromptu' ? '<button class="button secondary" id="new-topic">Try a new topic</button>' : ''}</div>${interviewReview(state)}${comparisonView(state)}${memoryFeedbackMarkup()}<nav class="stage-nav" aria-label="Review progress">${[
+    ['audio', 'mic', 'Voice feedback'],
+    ...(recording.hasVideo ? [['video', 'video', 'Visual feedback']] : []),
+    ['combined', 'chat', 'Summary'],
   ]
     .map(
       ([key, ico, label], i) =>
@@ -414,7 +420,7 @@ function reviewView() {
           )
           .join('')}</div></section>`
       : ''
-  }${stage === 'combined' ? rubricMarkup() + chatMarkup() : `<details class="rubric"><summary>${stage === 'audio' ? 'Read the complete transcript' : 'How posture feedback is measured'}</summary><p>${stage === 'audio' ? escape(state.report?.transcript || 'The transcript will appear after Gemini finishes audio processing.') : 'Measurements compare visible head, shoulder, and torso alignment with your neutral baseline. Low-visibility frames are excluded; this does not measure your internal confidence.'}</p></details>`}${state.report?.cleanupWarning ? `<p class="notice error">${escape(state.report.cleanupWarning)}</p>` : ''}<div class="review-actions"><button class="button secondary" id="reset">${icon('reset')}New practice</button>${stage !== 'combined' ? `<button class="button primary" data-phase="${stage === 'audio' && recording.hasVideo ? 'video' : 'combined'}">${stage === 'audio' && recording.hasVideo ? 'Watch my delivery' : 'Bring it together'}</button>` : ''}</div></section>${feedbackMarkup(stage)}</div><div id="practice-cards">${cardsMarkup()}</div><p class="footer-note">${icon('shield')}Your local recording is cleared when you reset or close this page. Google’s data-use terms apply to cloud processing.</p>`;
+  }${stage === 'combined' ? rubricMarkup() + chatMarkup() : `<details class="rubric"><summary>${stage === 'audio' ? 'Read the complete transcript' : 'How posture feedback is measured'}</summary><p>${stage === 'audio' ? escape(state.report?.transcript || 'The transcript will appear after Gemini finishes audio processing.') : 'Measurements compare visible head, shoulder, and torso alignment with your neutral baseline. Low-visibility frames are excluded; this does not measure your internal confidence.'}</p></details>`}${state.report?.cleanupWarning ? `<p class="notice error">${escape(state.report.cleanupWarning)}</p>` : ''}<div class="review-actions"><button class="button secondary" id="reset">${icon('reset')}New practice</button>${stage !== 'combined' ? `<button class="button primary" data-phase="${stage === 'audio' && recording.hasVideo ? 'video' : 'combined'}">${stage === 'audio' && recording.hasVideo ? 'Continue to visual feedback' : 'Continue to summary'}</button>` : ''}</div></section>${feedbackMarkup(stage)}</div><div id="practice-cards">${cardsMarkup()}</div><p class="footer-note">${icon('shield')}Your local recording is cleared when you reset or close this page. Google’s data-use terms apply to cloud processing.</p>`;
 }
 function memoryFeedbackMarkup() {
   if (state.practiceMode !== 'memorization') return '';
@@ -1149,7 +1155,8 @@ async function pollReport(token) {
           review: result.stages.audio,
         };
       if (state.screen === 'processing') {
-        state.phase = result.stages?.combined ? 'combined' : 'audio';
+        // Begin with voice-specific feedback; users can advance to visual and combined review.
+        state.phase = 'audio';
         state.screen = 'review';
       }
       render();
@@ -1289,13 +1296,26 @@ function revealSections() {
 }
 
 function bindPublic() {
+  let launchTimer;
+  const launchStudio = () => {
+    pulseHeroVisualizer();
+    clearTimeout(launchTimer);
+    launchTimer = window.setTimeout(() => void goPage('studio'), 180);
+  };
+  document.querySelectorAll('a[href="#studio"]').forEach((link) =>
+    link.addEventListener('click', (event) => {
+      if (currentPage === 'studio') return;
+      event.preventDefault();
+      launchStudio();
+    }),
+  );
   document.querySelectorAll('[data-open-mode]').forEach((button) =>
     button.addEventListener('click', () => {
       if (state.screen === 'script' && !state.busy) {
         state.practiceMode = button.dataset.openMode;
         saveDraft(state);
       }
-      void goPage('studio');
+      launchStudio();
     }),
   );
   $('practice-launcher')?.addEventListener('submit', (event) => {
@@ -1311,7 +1331,7 @@ function bindPublic() {
       state.scriptTab = 'generate';
       saveDraft(state);
     }
-    void goPage('studio');
+    launchStudio();
   });
   document.querySelectorAll('[data-topic]').forEach((button) =>
     button.addEventListener('click', () => {
@@ -1343,6 +1363,7 @@ function bindPublic() {
       tabs[next].focus();
     });
   });
+  syncHeroVisualizers();
 }
 function scrollBehavior() {
   return matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth';
