@@ -18,7 +18,7 @@ import {
 } from './validation.js';
 import { flashcardsSchema } from '../shared/flashcards.js';
 import { sessionInputSchema } from '../shared/practice.js';
-import { finalScore, postureCoverage } from '../shared/scoring.js';
+import { finalScore } from '../shared/scoring.js';
 import {
   MAX_AUDIO_BYTES,
   MAX_RECORDING_MS,
@@ -220,7 +220,9 @@ export async function buildApp({
     if (!audio || !payload)
       return reply.code(400).send({ error: 'Audio and observations are both required.' });
     try {
-      validateWav(audio, payload.durationMs);
+      const measuredAudio = validateWav(audio, payload.durationMs);
+      // Score actual PCM clipping rather than trusting a client-supplied perfect value.
+      payload.acoustics.clippedFraction = measuredAudio.clippedFraction;
     } catch (e) {
       return reply.code(400).send({ error: e.message });
     }
@@ -295,13 +297,14 @@ export async function buildApp({
         transcript: s.transcript?.text || '',
         poseSamples: payload.poseSamples,
         durationMs: payload.durationMs,
+        acoustics: payload.acoustics,
       });
       s.report.score = scoring;
-      const visual = postureCoverage(payload.poseSamples, 0, payload.durationMs);
       s.report.visualMetrics = {
-        coverage: visual.coverage,
-        deviationPercent: visual.validMs ? (100 * visual.deviationMs) / visual.validMs : null,
-        upperBodyOnly: visual.limitedMs / Math.max(1, visual.validMs),
+        coverage: scoring.coverage.posture,
+        deviationPercent: scoring.metrics.postureDeviationPercent,
+        upperBodyOnly: scoring.coverage.upperBodyOnly,
+        movementPercent: scoring.metrics.movementPercent,
       };
       const evidence = [
         ...scoring.events,
@@ -318,7 +321,7 @@ export async function buildApp({
       s.report.words = s.transcript?.words;
       if (s.transcript && !s.report.stages.audio) {
         try {
-          const { postureDeviationPercent, ...speechMetrics } = scoring.metrics;
+          const { postureDeviationPercent, movementPercent, ...speechMetrics } = scoring.metrics;
           s.report.stages.audio = await attempt('audio', () =>
             provider.review(
               'audio',
@@ -335,6 +338,19 @@ export async function buildApp({
                   : {}),
                 durationMs: payload.durationMs,
                 metrics: speechMetrics,
+                scoring: {
+                  ...scoring.components.audio,
+                  rubric: scoring.version,
+                  penalties: Object.fromEntries(
+                    ['filler', 'pace', 'pause', 'clarity'].map((key) => [
+                      key,
+                      scoring.penalties[key],
+                    ]),
+                  ),
+                  priorities: scoring.feedback.filter(
+                    (item) => !['posture', 'movement'].includes(item.category),
+                  ),
+                },
                 acoustics: payload.acoustics,
                 evidence: evidence.filter((e) => ['filler', 'pause'].includes(e.category)),
               },
@@ -381,6 +397,18 @@ export async function buildApp({
                 trackingCoverage: s.report.visualMetrics.coverage,
                 deviationPercent: s.report.visualMetrics.deviationPercent,
                 upperBodyOnlyFraction: s.report.visualMetrics.upperBodyOnly,
+                movementPercent: s.report.visualMetrics.movementPercent,
+                scoring: {
+                  ...scoring.components.posture,
+                  rubric: scoring.version,
+                  penalties: {
+                    posture: scoring.penalties.posture,
+                    movement: scoring.penalties.movement,
+                  },
+                  priorities: scoring.feedback.filter((item) =>
+                    ['posture', 'movement'].includes(item.category),
+                  ),
+                },
                 evidence: evidence.filter((e) => ['posture', 'frame'].includes(e.category)),
                 frameTimesMs: payload.frames.map((f) => f.timeMs),
               },
@@ -414,6 +442,11 @@ export async function buildApp({
                   : {}),
                 score: scoring.score,
                 penalties: scoring.penalties,
+                components: scoring.components,
+                combination: scoring.combination,
+                partial: scoring.partial,
+                warnings: scoring.warnings,
+                priorities: scoring.feedback,
                 evidence,
               },
               [],

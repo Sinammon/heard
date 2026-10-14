@@ -57,7 +57,7 @@ describe('punctuation pauses', () => {
     expect(analyzePauses(pair('idea,', 20)).events[0].issue).toBe('too-short');
     const long = analyzePauses(pair('idea.', 5000));
     expect(long.events).toHaveLength(1);
-    expect(long.events[0].excessMs).toBe(2000);
+    expect(long.events[0].excessMs).toBe(3500);
     expect(analyzePauses(pair('idea', 5000)).events[0].kind).toBe('internal');
   });
   it.each(['Dr.', 'A.', 'U.S.', '3.14', 'wait...'])(

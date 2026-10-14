@@ -1,4 +1,10 @@
-import { calibrate, measurements, PostureDetector, EpisodeTracker } from '../shared/posture.js';
+import {
+  calibrate,
+  measurements,
+  PostureDetector,
+  MovementDetector,
+  EpisodeTracker,
+} from '../shared/posture.js';
 import { provisionalScore, RUBRIC } from '../shared/scoring.js';
 import { detectFillers } from '../shared/speech.js';
 import { MAX_RECORDING_MS } from '../shared/limits.js';
@@ -49,6 +55,7 @@ export class PracticeMedia {
     this.frames = [];
     this.episodes = new EpisodeTracker({ sustainMs: 0, recoveryMs: 0 });
     this.postureDetector = new PostureDetector();
+    this.movementDetector = new MovementDetector();
     this.turns = [];
     this.seenTurns = new Set();
     this.lastPose = null;
@@ -170,6 +177,11 @@ export class PracticeMedia {
           }
         }
         const posture = this.postureDetector.update(m, this.baseline, this.mode, data.time);
+        const movement = this.movementDetector.update(
+          posture.valid ? m : null,
+          this.baseline,
+          data.time,
+        );
         this.lastPoseTime = performance.now();
         this.poseStale = false;
         this.lastPose = { ...posture, landmarks: data.landmarks };
@@ -179,6 +191,7 @@ export class PracticeMedia {
             valid: posture.valid,
             deviation: posture.deviation,
             limited: Boolean(posture.limited),
+            ...(typeof movement === 'boolean' ? { movement } : {}),
           };
           this.poseSamples.push(sample);
           const event = this.episodes.update(sample);
@@ -345,6 +358,7 @@ export class PracticeMedia {
     this.episodes.reset();
     this.postureDetector.reset();
     this.livePaceWindows = new Set();
+    this.movementDetector.reset();
     const mime = (
       this.hasVideo
         ? ['video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']

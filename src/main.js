@@ -13,6 +13,8 @@ import { MAX_SCRIPT_CHARS } from '../shared/limits.js';
 import { parseReport } from '../shared/reports.js';
 import { flashcardsSchema } from '../shared/flashcards.js';
 import { practiceMode, MemorizationClock } from '../shared/practice.js';
+import { REVIEW_STAGES, canReviewStage } from '../shared/review-flow.js';
+import { scoreExplanation, reviewScoreMarkup, rubricMarkup } from './score-views.js';
 
 const formatTime = (ms) =>
   `${String(Math.floor(ms / 60000)).padStart(2, '0')}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
@@ -48,6 +50,9 @@ const state = {
   recording: null,
   report: null,
   phase: 'audio',
+  reviewFurthest: 0,
+  reviewStarted: false,
+  playbackPositions: {},
   health: null,
   error: '',
   success: '',
@@ -84,6 +89,7 @@ function updateNavigation(section = currentPage) {
 }
 
 function render() {
+  if (state.screen === 'review') rememberPlayback();
   document.title =
     currentPage === 'about'
       ? 'Our approach — Heard'
@@ -321,12 +327,12 @@ function processingView() {
   };
   return `${head('03 / Review', 'A fresh perspective is on its way.', 'Your recording is ready. AI review can take a few minutes.')}<section class="processing"><span class="icon-box">${icon('sound')}</span><h2>Preparing your review</h2><p>Final scoring uses the complete transcript and your tracking evidence.</p><ul class="processing-list">${[
     ['transcript', 'Word-timed audio transcription'],
-    ['audio', 'Audio-only review'],
+    ['audio', '1. Audio Analysis'],
     ...(state.practiceMode === 'memorization'
       ? [['memory', 'Recall of your script’s main ideas']]
       : []),
-    ...(state.recording?.hasVideo ? [['video', 'Visual delivery review']] : []),
-    ['combined', 'Combined coaching report'],
+    ['video', '2. Posture Analysis'],
+    ['combined', '3. Combined Evaluation'],
   ]
     .map(([key, label]) => stageItem(key, label))
     .join(
@@ -334,6 +340,8 @@ function processingView() {
     )}</ul>${state.report?.error ? `<p class="notice error">${escape(state.report.error)}</p>` : ''}<div class="actions"><button class="button secondary" id="view-playback">Listen while you wait</button><button class="text-button" id="reset">Cancel & clear session</button></div></section>`;
 }
 function feedbackMarkup(stage) {
+  if (stage === 'video' && !state.recording?.hasVideo)
+    return '<section class="feedback"><h2>Posture analysis unavailable</h2><p>Camera was off for this take. No posture or movement result is inferred. Continue to the combined evaluation for a clearly labeled partial speech score.</p></section>';
   const report = state.report?.stages?.[stage];
   if (!report)
     return `<section class="feedback"><span class="icon-box">${icon(stage === 'audio' ? 'mic' : stage === 'video' ? 'video' : 'chat')}</span><h2 style="margin-top:16px">${state.report?.status === 'processing' ? 'Your review is on its way.' : 'Your recording is ready.'}</h2><p>${escape(state.report?.error || 'AI feedback is unavailable. You can still play your recording and reflect on your delivery.')}</p>${state.report?.status !== 'processing' && state.report?.status !== 'local' ? '<button class="button secondary" id="retry-analysis" style="margin-top:20px">Retry AI analysis</button>' : state.report?.status === 'local' ? '' : '<p class="notice">You can keep listening while the review finishes.</p>'}</section>`;
@@ -362,21 +370,22 @@ function feedbackMarkup(stage) {
       '',
     )}${report.limitations.length ? `<div class="limitations"><strong>Keep in mind</strong>${report.limitations.map((text) => `<p>${escape(text)}</p>`).join('')}</div>` : ''}</section>`;
 }
-function scoreExplanation(score) {
-  if (score?.score == null)
-    return score?.reasons?.join(' ') || 'At least 30 seconds and 50 timestamped words are needed.';
-  return score.partial
-    ? (score.warnings || []).join(' ') ||
-        'Partial score: posture is excluded. Speech categories are normalized to 100.'
-    : `Final analysis checks word timing and delivery length. ${(score.warnings || []).join(' ')}`;
-}
-function rubricMarkup() {
-  const score = state.report?.score;
-  return `<details class="rubric"><summary>How scoring works</summary><p>This is a transparent practice rubric, not a confidence assessment. The final score uses timed speech and can differ from the provisional live score.</p><ul><li>Fillers: up to 25 points for hesitation sounds and clearly bracketed filler phrases. Ambiguous literal uses are excluded where rules can distinguish them.</li><li>Pace: up to 25 points for 20-second windows outside 110–180 words/min.</li><li>Pauses: up to 20 points. Commas target 150–500 ms; sentence endings target 300–900 ms. Missing or overly long pauses increase deductions, as does internal silence beyond 3 seconds.</li><li>Posture: up to 30 points for sustained deviation from your calibrated baseline. Below 80% usable coverage, posture is excluded and the speech categories are normalized to 100 as a partial score.</li></ul>${score ? `<p>Category deductions${score.partial ? ' before partial-score normalization' : ''}: fillers ${score.penalties.filler.toFixed(1)}, pace ${score.penalties.pace.toFixed(1)}, pauses ${score.penalties.pause.toFixed(1)}, posture ${score.partial ? 'excluded' : score.penalties.posture.toFixed(1)}. Posture coverage: ${Math.round(score.coverage.posture * 100)}%.</p>${state.recording?.payload.acoustics.pitchVariation != null ? `<p>Pitch variation: ${state.recording.payload.acoustics.pitchVariation.toFixed(1)} semitones (standard deviation). Descriptive only; microphone quality and speaking style affect this measure. It does not change your score.</p>` : '<p>Pitch variation unavailable: not enough reliable voiced samples.</p>'}${score.metrics.punctuationPauses != null ? `<p>${score.metrics.naturalPunctuationPauses} of ${score.metrics.punctuationPauses} measured punctuation pauses met the target range. Punctuation comes from your transcript; these ranges are coaching defaults.</p>` : ''}<p>${escape(scoreExplanation(score))}</p>` : '<p>A score needs 30 seconds, 50 timestamped words, and reliable speech timing. Missing posture permits a labeled partial score.</p>'}</details>`;
-}
 function chatMarkup() {
   return `<section class="chat"><div class="chat-head"><span class="icon-box">${icon('chat')}</span><div><h3>Your speaking coach</h3><p>A conversation grounded in this practice run.</p></div></div><div class="chat-messages" id="chat-messages" role="log" aria-label="Coaching conversation">${state.chat.length ? state.chat.map((m) => `<div class="chat-message ${m.role}" >${escape(m.text)}</div>`).join('') : '<div class="chat-message">Choose one habit to practice next. Ask about an observation, or request a short exercise.</div>'}</div><div class="chat-suggestions"><button data-question="What is the single most useful thing to practice next?">What should I practice next?</button><button data-question="Give me a two-minute exercise for my biggest improvement area.">Give me a short exercise</button></div><form class="chat-form" id="chat-form"><label class="sr-only" for="chat-input">Ask your speaking coach</label><input id="chat-input" maxlength="2000" placeholder="Ask about your delivery…" required ${!state.report?.stages?.combined ? 'disabled' : ''}><button class="button primary" id="chat-send" ${!state.report?.stages?.combined ? 'disabled' : ''}>Send</button></form></section>`;
 }
+function reviewNavigation() {
+  return `<nav class="stage-nav" aria-label="Review stages">${REVIEW_STAGES.map(
+    (item, index) =>
+      `<button class="stage-tab ${state.phase === item.id ? 'active' : index < state.reviewFurthest ? 'complete' : ''}" data-phase="${item.id}" aria-label="${index + 1}. ${item.title}" ${state.phase === item.id ? 'aria-current="step"' : ''} ${canReviewStage(state.reviewFurthest, item.id) ? '' : 'disabled'}>${icon(item.icon)}${index + 1}. ${item.title}</button>`,
+  ).join('')}</nav>`;
+}
+
+function rememberPlayback() {
+  const player = $('review-player');
+  if (player?.dataset.reviewPhase && Number.isFinite(player.currentTime))
+    state.playbackPositions[player.dataset.reviewPhase] = player.currentTime;
+}
+
 function reviewView() {
   const stage = state.phase,
     score = state.report?.score,
@@ -389,29 +398,18 @@ function reviewView() {
     combined: 'Find your next step.',
   }[stage];
   const desc = {
-    audio: 'Audio only. Focus on your pace and pauses.',
-    video: 'Sound off. Focus on posture and movement.',
-    combined: 'Your full recording, feedback, and speaking coach.',
+    audio: 'Step 1 · Audio Analysis. Focus on your pace, pauses, and clarity evidence.',
+    video: 'Step 2 · Posture Analysis. Focus on measured alignment and movement.',
+    combined: 'Step 3 · Combined Evaluation. Actual audio and posture results, brought together.',
   }[stage];
   const events = (state.report?.evidence || []).filter((e) =>
     stage === 'audio'
-      ? ['filler', 'pause'].includes(e.category)
+      ? ['filler', 'pause', 'pace', 'clarity'].includes(e.category)
       : stage === 'video'
-        ? e.category === 'posture'
+        ? ['posture', 'movement'].includes(e.category)
         : e.category !== 'frame',
   );
-  return `${head('03 / Review', title, desc, formatTime(recording.payload.durationMs))}${stage === 'combined' && state.report?.stages?.combined ? `<p class="review-summary">${escape(state.report.stages.combined.summary)}</p>` : ''}<div class="retry-actions"><button class="button primary" id="retry-practice" ${state.busy || state.report?.status === 'processing' ? 'disabled' : ''}>${state.practiceMode === 'interview' ? 'Retry this answer' : state.practiceMode === 'delivery' ? 'Repeat this drill' : 'Try again'}</button>${state.practiceMode === 'impromptu' ? '<button class="button secondary" id="new-topic">Try a new topic</button>' : ''}</div>${interviewReview(state)}${comparisonView(state)}${memoryFeedbackMarkup()}<nav class="stage-nav" aria-label="Review stages">${[
-    ['audio', 'mic', 'Listen'],
-    ...(recording.hasVideo ? [['video', 'video', 'Watch']] : []),
-    ['combined', 'chat', 'Reflect'],
-  ]
-    .map(
-      ([key, ico, label], i) =>
-        `<button class="stage-tab ${stage === key ? 'active' : ''}" data-phase="${key}" aria-current="${stage === key ? 'step' : 'false'}">${icon(ico)}${i + 1}. ${label}</button>`,
-    )
-    .join(
-      '',
-    )}</nav>${stage === 'combined' ? `<div class="final-score"><div><strong>${score?.score ?? '—'}</strong>${score?.score !== null && score?.score !== undefined ? '<small> / 100</small>' : ''}</div><div><h3>${score?.score !== null && score?.score !== undefined ? (score.partial ? 'Partial practice score' : 'Your final practice score') : 'Overall score unavailable'}</h3><p>${escape(scoreExplanation(score))}</p></div></div>` : ''}<div class="review-grid"><section>${stage === 'audio' || !recording.hasVideo ? `<div class="audio-stage"><p class="content-label">Your recording · audio only</p><div class="waveform" aria-hidden="true">${recording.waveform.map((level) => `<span style="--h:${4 + level * 60}px"></span>`).join('')}</div><audio id="review-player" controls src="${recording.audioUrl}" aria-label="Audio-only practice playback"></audio></div>` : `<div class="video-box"><video id="review-player" controls playsinline ${stage === 'video' ? 'muted' : ''} src="${recording.videoUrl}" aria-label="${stage === 'video' ? 'Muted visual' : 'Combined audio-video'} practice playback"></video></div>`}<p class="media-caption">${stage === 'video' ? 'Sound stays off in this stage. Playback is unmirrored, as your audience would see you.' : stage === 'audio' || !recording.hasVideo ? 'Audio-only playback from this browser.' : 'Full video is played from your browser; it has not been uploaded.'}</p><div class="metrics-grid">${stage === 'video' ? metric('Tracked delivery', visual ? `${Math.round(visual.coverage * 100)}%` : '—', 'Usable pose coverage') + metric('Alignment shift', visual?.deviationPercent != null ? `${Math.round(visual.deviationPercent)}%` : '—', visual?.upperBodyOnly > 0 ? 'Includes upper-body approximation' : 'Of tracked time') + metric('Practice mode', recording.payload.mode === 'seated' ? 'Seated' : 'Standing', 'Your selected setup') : metric('Delivery pace', metrics ? `${Math.round(metrics.wpm)}` : '—', '110–180 WPM target') + metric('Filler words', metrics ? metrics.fillers : '—', 'Hesitations and filler phrases') + metric(state.practiceMode === 'delivery' ? 'Long pauses' : 'Pause cues', metrics ? (state.practiceMode === 'delivery' ? (state.report.evidence || []).filter((e) => e.category === 'pause' && e.endMs - e.startMs > 3000).length : metrics.pauses) : '—', state.practiceMode === 'delivery' ? 'Gaps longer than 3 seconds' : 'Punctuation and long gaps')}${state.practiceMode === 'delivery' && stage !== 'video' ? metric('Vocal variation', recording.payload.acoustics.pitchVariation != null ? `${recording.payload.acoustics.pitchVariation.toFixed(1)} st` : '—', 'Pitch spread · descriptive only') : ''}</div>${
+  return `${head('03 / Review', title, desc, formatTime(recording.payload.durationMs))}${stage === 'combined' && state.report?.stages?.combined ? `<p class="review-summary">${escape(state.report.stages.combined.summary)}</p>` : ''}<div class="retry-actions"><button class="button primary" id="retry-practice" ${state.busy || state.report?.status === 'processing' ? 'disabled' : ''}>${state.practiceMode === 'interview' ? 'Retry this answer' : state.practiceMode === 'delivery' ? 'Repeat this drill' : 'Try again'}</button>${state.practiceMode === 'impromptu' ? '<button class="button secondary" id="new-topic">Try a new topic</button>' : ''}</div>${interviewReview(state)}${comparisonView(state)}${memoryFeedbackMarkup()}${reviewNavigation()}${reviewScoreMarkup(state, stage)}<div class="review-grid"><section>${stage === 'video' && !recording.hasVideo ? '<div class="posture-unavailable"><p>No camera recording for this take.</p></div>' : stage === 'audio' || !recording.hasVideo ? `<div class="audio-stage"><p class="content-label">Your recording · audio only</p><div class="waveform" aria-hidden="true">${recording.waveform.map((level) => `<span style="--h:${4 + level * 60}px"></span>`).join('')}</div><audio id="review-player" controls src="${recording.audioUrl}" aria-label="Audio-only practice playback"></audio></div>` : `<div class="video-box"><video id="review-player" controls playsinline ${stage === 'video' ? 'muted' : ''} src="${recording.videoUrl}" aria-label="${stage === 'video' ? 'Muted visual' : 'Combined audio-video'} practice playback"></video></div>`}<p class="media-caption">${stage === 'video' ? (recording.hasVideo ? 'Sound stays off in this stage. Playback is unmirrored, as your audience would see you.' : 'Posture and movement are unavailable. No visual score is assumed.') : stage === 'audio' || !recording.hasVideo ? 'Audio-only playback from this browser.' : 'Full video is played from your browser; it has not been uploaded.'}</p><div class="metrics-grid">${stage === 'video' && !recording.hasVideo ? '' : stage === 'video' ? metric('Tracked delivery', visual ? `${Math.round(visual.coverage * 100)}%` : '—', 'Usable pose coverage') + metric('Alignment shift', visual?.deviationPercent != null ? `${Math.round(visual.deviationPercent)}%` : '—', visual?.upperBodyOnly > 0 ? 'Includes upper-body approximation' : 'Of tracked time') + metric('Upper-body movement', visual?.movementPercent != null ? `${Math.round(visual.movementPercent)}%` : '—', 'Sustained sway · fixed camera required') : metric('Delivery pace', metrics ? `${Math.round(metrics.wpm)}` : '—', '110–180 WPM target') + metric('Filler words', metrics ? metrics.fillers : '—', 'Hesitations and filler phrases') + metric(state.practiceMode === 'delivery' ? 'Long pauses' : 'Pause cues', metrics ? (state.practiceMode === 'delivery' ? (state.report.evidence || []).filter((e) => e.category === 'pause' && e.endMs - e.startMs > 3000).length : metrics.pauses) : '—', state.practiceMode === 'delivery' ? 'Gaps longer than 3 seconds' : 'Punctuation and long gaps')}${state.practiceMode === 'delivery' && stage !== 'video' ? metric('Vocal variation', recording.payload.acoustics.pitchVariation != null ? `${recording.payload.acoustics.pitchVariation.toFixed(1)} st` : '—', 'Pitch spread · descriptive only') : ''}</div>${
     events.length
       ? `<section class="timeline"><h3>Moments to revisit</h3><div class="timeline-items">${events
           .slice(0, 30)
@@ -421,7 +419,7 @@ function reviewView() {
           )
           .join('')}</div></section>`
       : ''
-  }${stage === 'combined' ? rubricMarkup() + chatMarkup() : `<details class="rubric"><summary>${stage === 'audio' ? 'Read the complete transcript' : 'How posture feedback is measured'}</summary><p>${stage === 'audio' ? escape(state.report?.transcript || 'The transcript will appear after Gemini finishes audio processing.') : 'Measurements compare visible head, shoulder, and torso alignment with your neutral baseline. Low-visibility frames are excluded; this does not measure your internal confidence.'}</p></details>`}${state.report?.cleanupWarning ? `<p class="notice error">${escape(state.report.cleanupWarning)}</p>` : ''}<div class="review-actions"><button class="button secondary" id="reset">${icon('reset')}New practice</button>${stage !== 'combined' ? `<button class="button primary" data-phase="${stage === 'audio' && recording.hasVideo ? 'video' : 'combined'}">${stage === 'audio' && recording.hasVideo ? 'Watch my delivery' : 'Bring it together'}</button>` : ''}</div></section>${feedbackMarkup(stage)}</div><div id="practice-cards">${cardsMarkup()}</div><p class="footer-note">${icon('shield')}Your local recording is cleared when you reset or close this page. Google’s data-use terms apply to cloud processing.</p>`;
+  }${stage === 'combined' ? rubricMarkup(state) + chatMarkup() : `<details class="rubric"><summary>${stage === 'audio' ? 'Read the complete transcript' : 'How posture feedback is measured'}</summary><p>${stage === 'audio' ? escape(state.report?.transcript || 'The transcript will appear after Gemini finishes audio processing.') : 'Measurements compare visible head, shoulder, and torso alignment with your neutral baseline. Low-visibility frames are excluded; this does not measure your internal confidence.'}</p></details>`}${state.report?.cleanupWarning ? `<p class="notice error">${escape(state.report.cleanupWarning)}</p>` : ''}<div class="review-actions">${stage !== 'audio' ? `<button class="button secondary" data-phase="${stage === 'video' ? 'audio' : 'video'}">Back to ${stage === 'video' ? 'audio' : 'posture'} analysis</button>` : ''}<button class="button secondary" id="reset">${icon('reset')}New practice</button>${stage !== 'combined' ? `<button class="button primary" data-phase="${stage === 'audio' ? 'video' : 'combined'}">${stage === 'audio' ? (recording.hasVideo ? 'Watch my delivery' : 'Continue to posture analysis') : 'Bring it together'}</button>` : ''}</div></section>${feedbackMarkup(stage)}</div><div id="practice-cards">${cardsMarkup()}</div><p class="footer-note">${icon('shield')}Your local recording is cleared when you reset or close this page. Google’s data-use terms apply to cloud processing.</p>`;
 }
 function memoryFeedbackMarkup() {
   if (state.practiceMode !== 'memorization') return '';
@@ -642,6 +640,7 @@ function bind() {
   );
   on('view-playback', 'click', () => {
     state.phase = 'audio';
+    state.reviewStarted = true;
     navigate('review');
   });
   on('retry-analysis', 'click', () => analyze());
@@ -649,7 +648,14 @@ function bind() {
   on('reset', 'click', reset);
   document.querySelectorAll('[data-phase]').forEach((button) =>
     button.addEventListener('click', () => {
+      if (!canReviewStage(state.reviewFurthest, button.dataset.phase)) return;
+      rememberPlayback();
       state.phase = button.dataset.phase;
+      state.reviewFurthest = Math.max(
+        state.reviewFurthest,
+        REVIEW_STAGES.findIndex((item) => item.id === state.phase),
+      );
+      state.reviewStarted = true;
       navigate('review');
     }),
   );
@@ -875,7 +881,7 @@ function updateScore(score) {
     $('score-explanation').textContent =
       score.score !== null
         ? score.partial
-          ? `Partial running score · ${Math.round(score.coverage.posture * 100)}% posture coverage. Speech categories only; final timing may change it.`
+          ? `Partial running score · ${Math.round(score.coverage.posture * 100)}% posture coverage. Only available evidence contributes; audio clarity is assessed after recording.`
           : 'A provisional running score. Final analysis checks word timing and may change it.'
         : state.sessionId
           ? 'A score needs 50 finalized words and 30 seconds of speech. Below 80% posture coverage, it becomes a partial score.'
@@ -891,7 +897,7 @@ function updateScore(score) {
     $('pace-feedback').textContent =
       !state.media?.liveReady || score.pace == null || score.elapsed <= 5000
         ? 'Target 110–180 WPM · waiting for finalized speech.'
-        : `${score.pace < 110 ? 'Below target · try a steadier pace' : score.pace > 180 ? 'Above target · give each idea more space' : 'Pace is in the target range'} · 110–180 WPM. Final deductions use 20-second windows.`;
+        : `${score.pace < 125 ? 'Below the strongest range · try a steadier pace' : score.pace > 165 ? 'Above the strongest range · give each idea more space' : 'Pace is in the strongest range'} · 125–165 WPM. Final deductions use 10-second windows.`;
 }
 function recordingLimit() {
   return (
@@ -1049,6 +1055,12 @@ async function startRecording() {
     if (document.hidden) throw new Error('Return to this tab before starting your recording.');
     state.transcript = '';
     state.interim = '';
+    state.phase = 'audio';
+    state.reviewFurthest = 0;
+    state.reviewStarted = false;
+    state.playbackPositions = {};
+    state.report = null;
+    state.chat = [];
     state.busy = false;
     navigate('recording');
     state.media.start(state.sessionId, true, recordingLimit());
@@ -1106,7 +1118,8 @@ async function analyze() {
   clearTimeout(poll);
   const token = ++generation;
   state.report = { ...state.report, status: 'processing', error: null };
-  state.screen = 'processing';
+  rememberPlayback();
+  state.screen = state.reviewStarted ? 'review' : 'processing';
   render();
   const data = new FormData();
   data.append('payload', JSON.stringify(state.recording.payload));
@@ -1117,7 +1130,8 @@ async function analyze() {
   } catch (e) {
     if (token !== generation) return;
     state.report = { ...state.report, status: 'failed', error: e.message };
-    state.phase = 'audio';
+    if (!state.reviewStarted) state.phase = 'audio';
+    state.reviewStarted = true;
     state.screen = 'review';
     render();
   }
@@ -1141,7 +1155,11 @@ async function pollReport(token) {
       state.report?.cleanupWarning,
       state.report?.stageStatus,
     ]);
-    state.report = result;
+    state.report = {
+      ...state.report,
+      ...result,
+      stages: { ...state.report?.stages, ...result.stages },
+    };
     if (result.status !== 'processing') {
       rememberAttempt();
       if (
@@ -1156,7 +1174,8 @@ async function pollReport(token) {
           review: result.stages.audio,
         };
       if (state.screen === 'processing') {
-        state.phase = result.stages?.combined ? 'combined' : 'audio';
+        if (!state.reviewStarted) state.phase = 'audio';
+        state.reviewStarted = true;
         state.screen = 'review';
       }
       render();
@@ -1187,6 +1206,15 @@ async function pollReport(token) {
 function bindPlayer() {
   const player = $('review-player');
   if (!player) return;
+  player.dataset.reviewPhase = state.phase;
+  const restore = () => {
+    const position = state.playbackPositions[state.phase];
+    if (Number.isFinite(position) && Number.isFinite(player.duration))
+      player.currentTime = Math.min(position, Math.max(0, player.duration - 0.01));
+  };
+  if (player.readyState >= 1) restore();
+  else player.addEventListener('loadedmetadata', restore, { once: true });
+  player.addEventListener('timeupdate', rememberPlayback);
   if (state.phase === 'video') {
     player.muted = true;
     player.volume = 0;
@@ -1265,6 +1293,9 @@ async function reset() {
     busy: false,
     chat: [],
     phase: 'audio',
+    reviewFurthest: 0,
+    reviewStarted: false,
+    playbackPositions: {},
     consent: false,
     interview: null,
     transcript: '',

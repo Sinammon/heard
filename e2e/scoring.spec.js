@@ -57,11 +57,15 @@ test('fifteen-minute settings persist and partial reviews explain omitted postur
   await expect(page.locator('#timer')).not.toHaveText('00:00');
   await page.getByRole('button', { name: 'Finish practice' }).click();
   await expect(page.locator('.metrics-grid')).toContainText('140');
-  await page.getByRole('button', { name: '3. Reflect', exact: true }).click();
+  await expect(
+    page.getByRole('button', { name: '3. Combined Evaluation', exact: true }),
+  ).toBeDisabled();
+  await page.getByRole('button', { name: '2. Posture Analysis', exact: true }).click();
+  await page.getByRole('button', { name: '3. Combined Evaluation', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Partial practice score' })).toBeVisible();
   await expect(page.locator('.final-score')).toContainText('Posture is excluded');
   await page.getByText('How scoring works', { exact: true }).click();
-  await expect(page.locator('.rubric')).toContainText('posture excluded');
+  await expect(page.locator('.rubric')).toContainText('Posture: excluded');
   await expect(page.locator('.rubric')).toContainText('150–500 ms');
   await page.getByRole('button', { name: 'New practice' }).click();
   await expect(page.getByLabel('Your practice script')).toHaveValue(/daily practice/);

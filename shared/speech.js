@@ -97,9 +97,9 @@ export function analyzePauses(words) {
           kind: boundary.kind,
           issue: gapMs < boundary.minMs ? 'too-short' : 'too-long',
           gapMs,
-          excessMs: Math.max(0, gapMs - 3000),
+          excessMs: Math.max(0, gapMs - 1500),
         });
-    } else if (gapMs > 3000)
+    } else if (gapMs > 1500)
       events.push({
         id: `pause-${i}`,
         category: 'pause',
@@ -108,7 +108,7 @@ export function analyzePauses(words) {
         kind: 'internal',
         issue: 'too-long',
         gapMs,
-        excessMs: gapMs - 3000,
+        excessMs: gapMs - 1500,
       });
   }
   return { events, boundaries };

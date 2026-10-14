@@ -71,7 +71,13 @@ async function finishTake(page) {
   }
   await expect(page.locator('#timer')).not.toHaveText('00:00');
   await page.getByRole('button', { name: 'Finish practice' }).click();
-  await expect(page.locator('.review-summary')).toContainText('Synthetic review');
+  await expect(page.locator('.feedback')).toContainText('Synthetic review');
+  await expect(
+    page.getByRole('button', { name: '1. Audio Analysis', exact: true }),
+  ).toHaveAttribute('aria-current', 'step');
+  await expect(
+    page.getByRole('button', { name: '3. Combined Evaluation', exact: true }),
+  ).toBeDisabled();
   await expect(page.locator('audio#review-player')).toBeVisible();
   for (const width of [320, 768, 1280]) {
     await page.setViewportSize({ width, height: 900 });

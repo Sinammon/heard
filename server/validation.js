@@ -24,6 +24,7 @@ export const analysisSchema = z
           valid: z.boolean(),
           deviation: z.boolean(),
           limited: z.boolean().optional(),
+          movement: z.boolean().optional(),
         }),
       )
       .max(MAX_POSE_SAMPLES),
@@ -85,7 +86,8 @@ export function validateWav(buffer, durationMs) {
     throw new Error('Upload a PCM WAV recording.');
   let offset = 12,
     format,
-    dataSize;
+    dataSize,
+    dataStart;
   while (offset + 8 <= buffer.length) {
     const id = buffer.toString('ascii', offset, offset + 4),
       size = buffer.readUInt32LE(offset + 4);
@@ -97,7 +99,10 @@ export function validateWav(buffer, durationMs) {
         rate: buffer.readUInt32LE(offset + 12),
         bits: buffer.readUInt16LE(offset + 22),
       };
-    if (id === 'data') dataSize = size;
+    if (id === 'data') {
+      dataSize = size;
+      dataStart = offset + 8;
+    }
     offset += 8 + size + (size % 2);
   }
   if (
@@ -106,10 +111,15 @@ export function validateWav(buffer, durationMs) {
     format.channels !== 1 ||
     format.rate !== 16000 ||
     format.bits !== 16 ||
-    !dataSize
+    !dataSize ||
+    dataSize % 2 !== 0
   )
     throw new Error('Expected mono 16 kHz, 16-bit PCM audio.');
   const actualMs = dataSize / 32;
   if (actualMs > MAX_EVIDENCE_MS || Math.abs(actualMs - durationMs) > 1000)
     throw new Error('Audio duration does not match this session.');
+  let clipped = 0;
+  for (let sample = dataStart; sample < dataStart + dataSize; sample += 2)
+    if (Math.abs(buffer.readInt16LE(sample)) >= 0.99 * 32767) clipped++;
+  return { durationMs: actualMs, clippedFraction: clipped / (dataSize / 2) };
 }

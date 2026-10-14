@@ -4,7 +4,7 @@ import { provisionalScore } from '../shared/scoring.js';
 it('requires finalized speech and labels insufficient posture as partial', () => {
   const data = {
     events: [],
-    turns: [{ text: Array(50).fill('word').join(' '), startMs: 0, endMs: 30000 }],
+    turns: [{ text: Array(70).fill('word').join(' '), startMs: 0, endMs: 30000 }],
     poseSamples: Array.from({ length: 300 }, (_, i) => ({ timeMs: i * 100, valid: true })),
     liveReady: true,
   };
@@ -18,5 +18,7 @@ it('requires finalized speech and labels insufficient posture as partial', () =>
   expect(
     provisionalScore({ ...data, turns: [{ ...data.turns[0], text: 'Too short' }] }).score,
   ).toBeNull();
-  expect(provisionalScore({ ...data, events: [{ id: 'one', category: 'filler' }] }).score).toBe(99);
+  expect(
+    provisionalScore({ ...data, events: [{ id: 'one', category: 'filler' }] }).score,
+  ).toBeLessThan(90);
 });

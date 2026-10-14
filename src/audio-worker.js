@@ -60,7 +60,7 @@ self.onmessage = ({ data }) => {
   active = rms > threshold;
   let pause;
   if (active) {
-    if (sawSpeech && silentStart !== null && data.timeMs - silentStart > 3000)
+    if (sawSpeech && silentStart !== null && data.timeMs - silentStart > 1500)
       pause = {
         id: `pause-live-${silentStart}`,
         category: 'pause',

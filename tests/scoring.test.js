@@ -18,13 +18,13 @@ describe('practice rubric', () => {
   it('deduplicates finalized events and applies category caps', () => {
     const events = Array.from({ length: 80 }, (_, i) => ({ id: `f${i}`, category: 'filler' }));
     expect(liveScore([...events, ...events])).toEqual({
-      score: 75,
-      deductions: { filler: 25, pace: 0, pause: 0, posture: 0 },
+      score: 50,
+      deductions: { filler: 25, pace: 0, pause: 0, posture: 0, clarity: 0, movement: 0 },
     });
   });
   it('scores supported steady delivery reproducibly', () => {
     const input = { words: words(), poseSamples: pose(), durationMs: 60000 };
-    expect(finalScore(input).score).toBe(100);
+    expect(finalScore(input).score).toBeGreaterThanOrEqual(90);
     expect(finalScore(input)).toEqual(finalScore(input));
   });
   it('normalizes filler rate across different delivery lengths', () => {
@@ -42,7 +42,8 @@ describe('practice rubric', () => {
   });
   it('labels and normalizes a speech-only score without inventing posture evidence', () => {
     const score = finalScore({ words: words(), poseSamples: [], durationMs: 60000 });
-    expect(score.score).toBe(100);
+    expect(score.score).toBeGreaterThanOrEqual(90);
+    expect(score.components.posture.score).toBeNull();
     expect(score.partial).toBe(true);
     expect(score.availableCategories).not.toContain('posture');
     expect(score.metrics.postureDeviationPercent).toBeNull();
@@ -63,13 +64,14 @@ describe('practice rubric', () => {
     expect(result.metrics.pauses).toBe(0);
     expect(result.penalties.pause).toBe(0);
   });
-  it('penalizes only excess internal silence over three seconds', () => {
+  it('penalizes excess internal silence beyond one and a half seconds', () => {
     const speech = words().map((w, i) =>
       i >= 60 ? { ...w, startMs: w.startMs + 5000, endMs: w.endMs + 5000 } : w,
     );
     const result = finalScore({ words: speech, poseSamples: pose(65000), durationMs: 65000 });
     expect(result.metrics.pauses).toBe(1);
-    expect(result.events.find((e) => e.category === 'pause').excessMs).toBe(2050);
+    expect(result.events.find((e) => e.category === 'pause').excessMs).toBe(3550);
+    expect(result.score).toBeLessThan(75);
   });
   it('does not interpret contextual words as fillers', () => {
     expect(isFiller('Um,')).toBe(true);
@@ -96,8 +98,14 @@ describe('practice rubric', () => {
     const full = finalScore({ words: speech, poseSamples: pose(), durationMs: 60000 });
     const partial = finalScore({ words: speech, durationMs: 60000 });
     expect(full.metrics.wpm).toBeCloseTo(pace);
-    expect(full.penalties.pace).toBe(pace === 140 ? 0 : 25);
-    expect(partial.score).toBe(Math.round(100 * (1 - full.penalties.pace / 70)));
+    if (pace === 140) {
+      expect(full.penalties.pace).toBe(0);
+      expect(partial.score).toBe(100);
+    } else {
+      expect(full.penalties.pace).toBeGreaterThan(10);
+      expect(full.score).toBeLessThan(75);
+      expect(partial.score).toBeLessThan(75);
+    }
   });
   it('deducts for consistently missing punctuation pauses and accepts natural flow', () => {
     const flowing = words().map((w, i) => ({

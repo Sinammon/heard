@@ -226,6 +226,66 @@ export class PostureDetector {
     };
   }
 }
+// Measures sustained shoulder-centre travel, separately from posture alignment.
+// A fixed camera is required: camera movement cannot be distinguished from body sway.
+export class MovementDetector {
+  constructor() {
+    this.reset();
+  }
+  reset() {
+    this.history = [];
+    this.filtered = null;
+    this.pending = null;
+    this.moving = false;
+  }
+  update(measurement, baseline, timeMs) {
+    const last = this.history.at(-1);
+    if (
+      !measurement ||
+      !baseline ||
+      !Number.isFinite(measurement.shoulderX) ||
+      !Number.isFinite(measurement.shoulderY) ||
+      !(baseline.width > 0)
+    ) {
+      this.reset();
+      return undefined;
+    }
+    if (last && (timeMs <= last.timeMs || timeMs - last.timeMs > 500)) this.reset();
+    const dt = this.history.length ? timeMs - this.history.at(-1).timeMs : 100;
+    const alpha = 1 - Math.exp(-dt / 180);
+    const point = {
+      x: measurement.shoulderX / baseline.width,
+      y: measurement.shoulderY / baseline.width,
+    };
+    this.filtered = this.filtered
+      ? {
+          x: this.filtered.x + alpha * (point.x - this.filtered.x),
+          y: this.filtered.y + alpha * (point.y - this.filtered.y),
+        }
+      : point;
+    this.history.push({ ...this.filtered, timeMs });
+    this.history = this.history.filter((p) => timeMs - p.timeMs <= 1200);
+    const span = timeMs - this.history[0].timeMs;
+    if (span < 800) return undefined;
+    const distance = this.history
+      .slice(1)
+      .reduce(
+        (sum, p, i) =>
+          sum + Math.max(0, Math.hypot(p.x - this.history[i].x, p.y - this.history[i].y) - 0.005),
+        0,
+      );
+    const speed = (distance * 1000) / span;
+    if (speed > 0.6) {
+      this.pending ??= timeMs;
+      if (timeMs - this.pending >= 1500) this.moving = true;
+    } else if (speed < 0.35) {
+      this.pending = null;
+      this.moving = false;
+    }
+    return this.moving;
+  }
+}
+
 export class EpisodeTracker {
   constructor({ sustainMs = 2000, recoveryMs = 1000 } = {}) {
     this.sustainMs = sustainMs;

@@ -246,7 +246,7 @@ test('completed reviews render safe evidence links and streamed coaching', async
   await expect
     .poll(() => page.locator('#review-player').evaluate((el) => el.currentTime))
     .toBeGreaterThan(0);
-  await page.getByRole('button', { name: '2. Watch', exact: true }).click();
+  await page.getByRole('button', { name: '2. Posture Analysis', exact: true }).click();
   await expect(page.getByText('Your shoulders stayed in view.')).toBeVisible();
   await page.getByRole('button', { name: 'Bring it together', exact: true }).click();
   await page.getByLabel('Ask your speaking coach').fill('What should I practice?');
