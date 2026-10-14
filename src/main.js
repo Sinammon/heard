@@ -1,6 +1,7 @@
 import { activePrompt, interviewReview, comparisonView } from './mode-views.js';
 import './style.css';
 import './modes.css';
+import './redesign.css';
 import { icon } from './icons.js';
 import { publicPage, demoView } from './pages.js';
 import { api, post, streamChat } from './api.js';
@@ -75,6 +76,13 @@ let currentPage =
   location.hash === '#about' ? 'about' : location.hash === '#studio' ? 'studio' : 'home';
 if (currentPage === 'studio') state.screen = 'script';
 
+function updateNavigation(section = currentPage) {
+  document.querySelectorAll('.site-nav a[href^="#"]').forEach((link) => {
+    if (link.hash === `#${section}`) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  });
+}
+
 function render() {
   document.title =
     currentPage === 'about'
@@ -90,10 +98,9 @@ function render() {
   $('home-page').hidden = currentPage !== 'home';
   $('about-page').hidden = currentPage !== 'about';
   $('studio').hidden = currentPage !== 'studio';
-  document.querySelectorAll('.site-header a[href^="#"]').forEach((link) => {
-    if (link.hash === `#${currentPage}`) link.setAttribute('aria-current', 'page');
-    else link.removeAttribute('aria-current');
-  });
+  updateNavigation(
+    currentPage === 'home' && location.hash === '#how-it-works' ? 'how-it-works' : currentPage,
+  );
   const navAction = $('nav-action');
   navAction.href = currentPage === 'studio' ? '#home' : '#studio';
   navAction.innerHTML = `${currentPage === 'studio' ? 'Back to home' : 'Start practicing'} ${icon('arrow')}`;
@@ -1298,27 +1305,7 @@ function bindPublic() {
       void goPage('studio');
     }),
   );
-  $('practice-launcher')?.addEventListener('submit', (event) => {
-    event.preventDefault();
-    if (state.screen !== 'script' || state.busy) {
-      goPage('studio');
-      return;
-    }
-    state.practiceMode = 'free';
-    const topic = $('practice-topic').value.trim();
-    if (topic) {
-      state.topic = topic;
-      state.scriptTab = 'generate';
-      saveDraft(state);
-    }
-    void goPage('studio');
-  });
-  document.querySelectorAll('[data-topic]').forEach((button) =>
-    button.addEventListener('click', () => {
-      $('practice-topic').value = button.dataset.topic;
-      $('practice-topic').focus();
-    }),
-  );
+  $('enter')?.addEventListener('click', () => void goPage('studio'));
   const tabs = [...document.querySelectorAll('[data-demo]')];
   const select = (button) => {
     for (const tab of tabs) {
@@ -1368,6 +1355,7 @@ async function goPage(next, updateHistory = true, section = '') {
   if (next === currentPage) {
     if (updateHistory && location.hash !== `#${section || next}`)
       history.pushState(null, '', `#${section || next}`);
+    updateNavigation(section || next);
     if (!section) window.scrollTo({ top: 0, behavior: scrollBehavior() });
     if (section) $(section)?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
     return;

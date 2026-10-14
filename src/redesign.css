@@ -1,0 +1,798 @@
+/* Reference-led visual layer, shared by the public pages and practice workspace. */
+:root {
+  --font-ui: -apple-system, BlinkMacSystemFont, 'Geist', 'Segoe UI', sans-serif;
+  --font-display: var(--font-ui);
+  --ink: #1d1d1f;
+  --green: #1d1d1f;
+  --muted: #666b76;
+  --line: #e2e4e9;
+  --paper: #fff;
+  --surface: #f3f4f7;
+  --canvas: #fdfdfe;
+  --accent: #f45128;
+  /* A slightly deeper orange keeps normal white button labels above 4.5:1. */
+  --action: #d83d19;
+  --peach: #fff1eb;
+  --radius: 18px;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: var(--canvas);
+}
+
+html {
+  scroll-padding-top: 112px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--action);
+  outline-offset: 4px;
+}
+
+.button {
+  border-radius: 12px;
+  font-weight: 600;
+}
+
+.button.primary {
+  background: var(--action);
+  color: #fff;
+}
+
+.button.primary:hover {
+  background: #bd3111;
+}
+
+.button.secondary,
+input:not([type='checkbox']):not([type='radio']),
+textarea,
+select {
+  border-color: var(--line);
+  border-radius: 12px;
+}
+
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--action);
+}
+
+.public-site {
+  max-width: 1584px;
+}
+
+.site-header {
+  min-height: 96px;
+  padding: 16px clamp(24px, 7.4vw, 116px);
+  gap: 36px;
+  background: var(--canvas);
+}
+
+.site-header .brand {
+  gap: 10px;
+}
+
+.site-header .brand-word {
+  font-family: 'Geist', sans-serif;
+  font-size: 2.25rem;
+}
+
+.site-header .brand-mark {
+  width: 40px;
+  height: 40px;
+}
+
+.site-nav {
+  margin-left: auto;
+  gap: 32px;
+}
+
+.site-nav a {
+  font-size: 1rem;
+  font-weight: 500;
+  padding-block: 14px;
+}
+
+.site-nav a::after {
+  bottom: 3px;
+}
+
+.nav-cta {
+  min-height: 48px;
+  padding: 12px 22px;
+  font-size: 0.95rem;
+}
+
+.public-site main > section,
+.public-site #home-page > section,
+.public-site #about-page > section {
+  margin-inline: clamp(24px, 7.4vw, 116px);
+}
+
+/* The first screen contains only the promise, its action, and an idle illustration. */
+.public-site #home-page > .landing-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  gap: 84px;
+  min-height: calc(100svh - 96px);
+  padding-block: 100px 76px;
+}
+
+.hero-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(40px, 5vw, 80px);
+  flex: 1;
+}
+
+.hero-copy {
+  min-width: 0;
+}
+
+/* Route changes focus the section for reading; controls retain their focus rings. */
+.landing-hero:focus,
+.about-hero:focus {
+  outline: none;
+}
+
+.hero-copy h1 {
+  margin: 0;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(4.5rem, 7.15vw, 6.2rem);
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  text-wrap: initial;
+}
+
+.hero-copy h1 > span {
+  display: block;
+  white-space: nowrap;
+}
+
+.hero-copy h1 em {
+  font-weight: 400;
+  color: var(--accent);
+}
+
+.hero-description {
+  margin-top: 24px;
+  max-width: 590px;
+  font-size: clamp(1.1rem, 1.7vw, 1.5rem);
+  line-height: 1.45;
+  letter-spacing: -0.025em;
+}
+
+.hero-cta {
+  margin-top: 38px;
+  min-height: 64px;
+  padding: 18px 36px;
+  font-size: 1.15rem;
+  gap: 16px;
+  border-radius: 15px;
+}
+
+.hero-cta .ui-icon {
+  width: 25px;
+  height: 25px;
+}
+
+.studio-illustration {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 36px;
+  min-width: 0;
+  padding-top: 30px;
+  pointer-events: none;
+}
+
+.studio-illustration-mark {
+  position: relative;
+  isolation: isolate;
+  color: var(--accent);
+}
+
+.studio-illustration-mark::before {
+  content: '';
+  position: absolute;
+  inset: -65px;
+  z-index: -1;
+  background: radial-gradient(ellipse, #f4512814 0%, #f4512808 38%, transparent 70%);
+}
+
+.studio-illustration-mark > svg {
+  width: clamp(140px, 12vw, 190px);
+  height: auto;
+}
+
+.studio-illustration-controls {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) 72px;
+  align-items: center;
+  gap: clamp(16px, 2.3vw, 36px);
+  width: 100%;
+  max-width: 580px;
+}
+
+.studio-illustration-device {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 1px solid #d5d9e2;
+  border-radius: 50%;
+  color: #48515e;
+}
+
+.studio-illustration-device .ui-icon {
+  width: 29px;
+  height: 29px;
+}
+
+.studio-illustration-wave {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 88px;
+  gap: 6px;
+}
+
+.studio-illustration-wave i {
+  display: block;
+  width: 4px;
+  height: var(--bar);
+  min-height: 5px;
+  flex-shrink: 1;
+  border-radius: 4px;
+  background: #a6adba;
+}
+
+.landing-steps {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.landing-steps li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 1.05rem;
+  letter-spacing: -0.025em;
+}
+
+.landing-step-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  color: var(--accent);
+  background: var(--peach);
+  border-radius: 50%;
+}
+
+.landing-step-icon .ui-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.landing-steps li > .ui-icon {
+  margin-left: 18px;
+  color: #a6adba;
+}
+
+/* The original serif is reserved for the landing slogan. */
+.about-hero h1,
+.section-heading h2,
+.faq-section h2,
+.privacy-section h2,
+.about-cta h2,
+.demo-example h4,
+.demo-excerpt,
+.sample-reflect > p,
+.writing-guide h2,
+.art-bottom p,
+.mode-preparation h2,
+.active-prompt h2,
+.cue-card h2,
+.interview-conversation h2,
+.attempt-comparison h2 {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.section-heading h2,
+.faq-section h2,
+.privacy-section h2,
+.about-cta h2,
+.home-modes h2,
+.writing-guide h2,
+.mode-preparation h2 {
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+}
+
+.how-section {
+  padding-block: 72px;
+  border-top: 1px solid var(--line);
+}
+
+.section-heading h2 {
+  margin-top: 12px;
+}
+
+.icon-box {
+  color: var(--action);
+  background: var(--peach);
+  border-radius: 12px;
+}
+
+.experience,
+.approach-grid,
+.panel,
+.ai-consent-panel,
+.flashcard {
+  border-color: var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 20px #1d1d1f03;
+}
+
+.public-site #home-page > .home-modes {
+  padding-block: 64px;
+  gap: 56px;
+}
+
+.home-modes h2 {
+  margin-top: 0;
+}
+
+.home-mode-list button {
+  padding-block: 20px;
+}
+
+.home-mode-list button:hover {
+  background: var(--surface);
+}
+
+.home-mode-list strong {
+  font-weight: 600;
+}
+
+.home-mode-list small {
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.faq-section {
+  padding-block: 64px;
+}
+
+.about-hero {
+  border-top: 0;
+  padding-block: 72px 56px;
+}
+
+.about-hero h1 {
+  margin-top: 20px;
+  font-size: clamp(2.8rem, 5.5vw, 4.8rem);
+}
+
+.about-hero h1 em {
+  color: var(--action);
+  font-style: normal;
+  font-weight: inherit;
+}
+
+.privacy-section {
+  padding-block: 72px;
+  gap: 64px;
+}
+
+.site-footer {
+  margin-inline: clamp(24px, 7.4vw, 116px);
+  padding-block: 32px;
+}
+
+/* Keep the workspace functional, with the same surfaces and action hierarchy. */
+.studio-section {
+  border-top: 0;
+  padding-block: 32px 72px;
+}
+
+.studio-section .studio-header,
+.recording-toolbar,
+.test-toolbar {
+  background: var(--canvas);
+}
+
+.page-head h1 {
+  font-weight: 600;
+  font-size: clamp(2rem, 3.3vw, 2.8rem);
+}
+
+.training-modes {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+}
+
+.training-options {
+  gap: 12px;
+}
+
+.training-option {
+  border-radius: 14px;
+  border-color: var(--line);
+  padding: 18px;
+  background: #fff;
+}
+
+.training-option.selected,
+.training-option:has(input:checked) {
+  border-color: var(--action);
+  background: #fff6f1;
+}
+
+.training-option:focus-within {
+  outline-color: var(--action);
+}
+
+.step.active .step-number {
+  background: var(--action);
+  border-color: var(--action);
+}
+
+.step-number,
+.setup-number {
+  border-radius: 50%;
+}
+
+.tab.active {
+  color: var(--action);
+  border-bottom-color: var(--action);
+}
+
+.mic-preview,
+.mode-control {
+  background: var(--surface);
+}
+
+.mode-choice:has(:checked) {
+  background: #fff;
+  color: var(--ink);
+}
+
+.cue-card h2,
+.active-prompt h2,
+.interview-conversation h2,
+.attempt-comparison h2 {
+  font-size: clamp(1.5rem, 2.5vw, 2rem);
+}
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .site-header {
+    padding-inline: 40px;
+    gap: 24px;
+  }
+
+  .site-header .brand-word {
+    font-size: 1.9rem;
+  }
+
+  .site-nav {
+    gap: 22px;
+  }
+
+  .site-nav a,
+  .nav-cta {
+    font-size: 0.9rem;
+  }
+
+  .public-site main > section,
+  .public-site #home-page > section,
+  .public-site #about-page > section,
+  .site-footer {
+    margin-inline: 40px;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(3.6rem, 7.1vw, 5.3rem);
+  }
+
+  .hero-main {
+    gap: 36px;
+  }
+
+  .studio-illustration-controls {
+    grid-template-columns: 52px minmax(0, 1fr) 52px;
+    gap: 16px;
+  }
+
+  .studio-illustration-device {
+    width: 52px;
+    height: 52px;
+  }
+
+  .studio-illustration-wave {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 760px) {
+  html {
+    scroll-padding-top: 132px;
+  }
+
+  .site-header {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    min-height: 112px;
+    gap: 8px 16px;
+    padding: 14px 24px 0;
+  }
+
+  .site-header .brand-word {
+    font-size: 1.7rem;
+  }
+
+  .site-header .brand-mark {
+    width: 30px;
+    height: 30px;
+  }
+
+  .site-header .brand {
+    gap: 7px;
+  }
+
+  .site-nav {
+    order: 3;
+    grid-column: 1 / -1;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .site-nav a {
+    min-height: 44px;
+    padding-block: 12px;
+    font-size: 0.85rem;
+  }
+
+  .nav-cta {
+    justify-self: end;
+    min-height: 44px;
+    padding: 10px 14px;
+    font-size: 0.8rem;
+    gap: 8px;
+  }
+
+  .public-site main > section,
+  .public-site #home-page > section,
+  .public-site #about-page > section,
+  .site-footer {
+    margin-inline: 24px;
+  }
+
+  .public-site #home-page > .landing-hero {
+    min-height: 0;
+    padding-block: 64px 44px;
+    gap: 52px;
+  }
+
+  .hero-main {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 44px;
+  }
+
+  .hero-copy h1 {
+    font-size: clamp(3.2rem, 12vw, 5.2rem);
+  }
+
+  .hero-description {
+    font-size: 1.05rem;
+    line-height: 1.5;
+    margin-top: 22px;
+    max-width: 500px;
+  }
+
+  .hero-cta {
+    min-height: 54px;
+    padding: 14px 24px;
+    font-size: 1rem;
+    margin-top: 28px;
+  }
+
+  .studio-illustration {
+    width: 100%;
+    max-width: 440px;
+    justify-self: center;
+    align-self: center;
+    gap: 22px;
+    padding-top: 0;
+  }
+
+  .studio-illustration-mark > svg {
+    width: 120px;
+  }
+
+  .studio-illustration-controls {
+    grid-template-columns: 48px minmax(0, 1fr) 48px;
+    gap: 18px;
+  }
+
+  .studio-illustration-device {
+    width: 48px;
+    height: 48px;
+  }
+
+  .studio-illustration-device .ui-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .studio-illustration-wave {
+    height: 58px;
+    gap: 4px;
+  }
+
+  .landing-steps {
+    justify-content: space-evenly;
+    gap: 26px;
+  }
+
+  .landing-steps li {
+    flex-direction: column;
+    gap: 9px;
+    font-size: 0.85rem;
+  }
+
+  .landing-step-icon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .landing-step-icon .ui-icon {
+    width: 22px;
+    height: 22px;
+  }
+
+  .landing-steps li > .ui-icon {
+    position: absolute;
+    top: 24px;
+    right: -32px;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+  }
+
+  .public-site #home-page > .home-modes {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding-block: 44px;
+  }
+
+  .about-hero,
+  .privacy-section,
+  .how-section,
+  .faq-section {
+    padding-block: 44px;
+  }
+
+  .about-hero h1 {
+    font-size: clamp(2.4rem, 8.5vw, 3.6rem);
+  }
+
+  .section-heading h2,
+  .faq-section h2,
+  .privacy-section h2,
+  .about-cta h2,
+  .writing-guide h2 {
+    font-size: 1.8rem;
+  }
+
+  .studio-section .studio-header {
+    gap: 12px;
+  }
+
+  .training-options {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .training-option {
+    padding: 16px;
+  }
+
+  .training-option small {
+    font-size: 0.85rem;
+  }
+
+  .panel,
+  .ai-consent-panel {
+    padding: 20px;
+  }
+
+  .page-head h1 {
+    font-size: 2rem;
+  }
+
+  .test-toolbar {
+    top: 112px;
+  }
+}
+
+@media (max-width: 370px) {
+  .site-header {
+    padding-inline: 16px;
+  }
+
+  .site-header .brand-word {
+    font-size: 1.5rem;
+  }
+
+  .site-header .brand-mark {
+    width: 27px;
+    height: 27px;
+  }
+
+  .public-site main > section,
+  .public-site #home-page > section,
+  .public-site #about-page > section,
+  .site-footer {
+    margin-inline: 16px;
+  }
+
+  .hero-copy h1 {
+    font-size: 3rem;
+  }
+
+  .hero-description {
+    font-size: 1rem;
+  }
+
+  .studio-illustration-controls {
+    gap: 12px;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .studio-illustration-mark::before {
+    display: none;
+  }
+
+  .site-header,
+  .recording-toolbar,
+  .test-toolbar {
+    background: var(--canvas);
+    backdrop-filter: none;
+  }
+
+  .experience,
+  .approach-grid,
+  .panel,
+  .ai-consent-panel,
+  .flashcard {
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .button {
+    transition: none;
+  }
+}

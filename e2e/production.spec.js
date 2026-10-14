@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { mockAIPractice } from './fixtures.js';
 
-test('homepage topic carries into a usable draft and persists across refresh', async ({ page }) => {
+test('landing action reaches Studio topic entry and the draft persists across refresh', async ({
+  page,
+}) => {
   await page.route('**/api/health', (route) =>
     route.fulfill({ json: { ok: true, aiConfigured: true } }),
   );
@@ -17,11 +19,9 @@ test('homepage topic carries into a usable draft and persists across refresh', a
     });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Class presentation', exact: true }).click();
   await page.getByRole('button', { name: 'Start practicing' }).click();
-  await expect(page.getByLabel('What would you like to talk about?')).toHaveValue(
-    'Introduce an idea to my class',
-  );
+  await page.getByRole('tab', { name: 'Draft with AI' }).click();
+  await page.getByLabel('What would you like to talk about?').fill('Introduce an idea to my class');
   await page.getByRole('button', { name: 'Generate a draft' }).click();
   await expect(page.getByRole('button', { name: 'Drafting your script' })).toBeDisabled();
   await expect(page.getByLabel('Your practice script')).toHaveAttribute('readonly', '');
