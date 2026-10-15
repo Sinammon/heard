@@ -84,18 +84,18 @@ describe('posture geometry and calibration', () => {
   });
 });
 describe('stable live posture feedback', () => {
-  it('keeps seated tracking usable when hips disappear and resets a torso warning', () => {
+  it('excludes torso measurements throughout seated tracking, even with a standing baseline', () => {
     const detector = new PostureDetector();
     const b = baseline();
     let result;
     for (let t = 0; t <= 3000; t += 100)
       result = detector.update(measurement({ pitch: 28 }), b, 'seated', t);
-    expect(result.deviation).toBe(true);
+    expect(result.deviation).toBe(false);
     result = detector.update(measurement({ hips: false }), b, 'seated', 3100);
     expect(result).toMatchObject({ valid: true, limited: true, deviation: false });
     expect(result.hint).toMatch(/Upper-body/);
     result = detector.update(measurement(), b, 'seated', 3200);
-    expect(result).toMatchObject({ valid: true, limited: false, deviation: false });
+    expect(result).toMatchObject({ valid: true, limited: true, deviation: false });
   });
   it('ignores brief motion, confirms sustained lean, and clears after recovery', () => {
     const detector = new PostureDetector();

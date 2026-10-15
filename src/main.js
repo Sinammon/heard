@@ -850,8 +850,7 @@ function updatePose(data) {
     [12, 24],
     [23, 24],
   ]) {
-    if (state.mode === 'seated' && (a > 12 || b > 12) && !state.media?.baseline?.torsoLength)
-      continue;
+    if (state.mode === 'seated' && (a > 12 || b > 12)) continue;
     if ((points[a]?.visibility || 0) < 0.7 || (points[b]?.visibility || 0) < 0.7) continue;
     c.beginPath();
     c.moveTo(points[a].x * canvas.width, points[a].y * canvas.height);

@@ -265,7 +265,7 @@ export function finalScore({
     warnings.push('Audio clarity evidence is unavailable; clarity is excluded.');
   if (pose.limitedMs > 0)
     warnings.push(
-      'Part of the posture review uses upper-body alignment only; hips were not continuously visible.',
+      'Part of the posture review uses upper-body alignment only. Seated tracking excludes hips; back and forward torso lean are not assessed.',
     );
   return {
     ...assemble(

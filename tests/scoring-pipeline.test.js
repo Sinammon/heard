@@ -95,8 +95,10 @@ it('scores actual PCM and sends isolated component results into the combined eva
     expect(calls[0].data.metrics).not.toHaveProperty('postureDeviationPercent');
     expect(calls[0].data.metrics).not.toHaveProperty('movementPercent');
     expect(calls[1].data.scoring.score).toBe(100);
+    expect(calls[1].data.mode).toBe('seated');
     expect(calls[1].data).not.toHaveProperty('transcript');
     expect(calls[2].data.score).toBe(result.score.score);
+    expect(calls[2].data.mode).toBe('seated');
     expect(calls[2].data.components).toEqual(result.score.components);
     expect(calls[2].data.combination).toEqual(result.score.combination);
   } finally {

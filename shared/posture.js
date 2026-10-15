@@ -24,6 +24,7 @@ export function measurements(landmarks, mode, aspectRatio = 1, worldLandmarks = 
   const centerX = (left.x + right.x) / 2;
   const centerY = (left.y + right.y) / (2 * aspectRatio);
   const hasHips =
+    mode === 'standing' &&
     [23, 24].every((i) => visible(landmarks[i])) &&
     (landmarks[23].y + landmarks[24].y) / (2 * aspectRatio) - centerY >= width * 0.4;
   if (mode === 'standing' && !hasHips) return null;
@@ -52,7 +53,17 @@ export function measurements(landmarks, mode, aspectRatio = 1, worldLandmarks = 
         torsoPitch = (Math.atan2(hips.z - shoulders.z, hips.y - shoulders.y) * 180) / Math.PI;
     }
   }
+  // Ear-centre alignment avoids treating a nose moving during a head turn/nod as
+  // neck displacement. Missing ears provide no head/neck evidence.
+  const hasEars = [7, 8].every((i) => visible(landmarks[i]));
+  const earDx = hasEars ? landmarks[8].x - landmarks[7].x : 0;
+  const usableEars = hasEars && Math.abs(earDx) >= width * 0.2;
   return {
+    neckOffset: usableEars ? ((landmarks[7].x + landmarks[8].x) / 2 - centerX) / width : null,
+    headTilt: usableEars
+      ? (Math.atan2((landmarks[8].y - landmarks[7].y) / aspectRatio, Math.abs(earDx)) * 180) /
+        Math.PI
+      : null,
     shoulderAngle: (Math.atan2(dy, Math.abs(dx)) * 180) / Math.PI,
     headX: (nose.x - centerX) / width,
     headY: (nose.y / aspectRatio - centerY) / width,
@@ -80,6 +91,8 @@ export function calibrate(samples) {
     ['shoulderAngle', 3],
     ['headX', 0.08],
     ['headY', 0.08],
+    ['neckOffset', 0.08],
+    ['headTilt', 4],
     ['width', 0.025],
     ['torsoAngle', 4],
     ['torsoPitch', 6],
@@ -124,8 +137,16 @@ export function deviation(m, b, mode) {
       reason = hint;
     }
   };
-  const hasTorso = Number.isFinite(b.torsoAngle) && Number.isFinite(m.torsoAngle);
-  if (Number.isFinite(b.torsoAngle) && !hasTorso && mode === 'standing') {
+  if (Number.isFinite(b.neckOffset) && Number.isFinite(m.neckOffset))
+    consider(
+      Math.abs(m.neckOffset - b.neckOffset) / 0.2,
+      'Head shifted relative to shoulders · return to your baseline',
+    );
+  if (Number.isFinite(b.headTilt) && Number.isFinite(m.headTilt))
+    consider(angleDifference(m.headTilt, b.headTilt) / 18, 'Head tilted · return to your baseline');
+  const hasTorso =
+    mode === 'standing' && Number.isFinite(b.torsoAngle) && Number.isFinite(m.torsoAngle);
+  if (!hasTorso && mode === 'standing') {
     return {
       valid: false,
       deviation: false,
@@ -150,8 +171,8 @@ export function deviation(m, b, mode) {
         'Torso lowered · sit or stand comfortably upright',
       );
   }
-  // Without visible hips, only shoulder alignment is supported. Absolute head and
-  // shoulder movement may be chair movement or camera reframing, not slouching.
+  // Seated tracking never uses hips, even with a previously standing baseline.
+  // Relative head/shoulder geometry does not establish back curvature or forward lean.
 
   return {
     valid: true,
@@ -162,7 +183,7 @@ export function deviation(m, b, mode) {
       magnitude > 1
         ? reason
         : !hasTorso
-          ? 'Upper-body alignment steady · hips needed for back tracking'
+          ? 'Upper-body alignment steady · seated hips excluded'
           : 'Aligned with your baseline',
   };
 }
@@ -221,7 +242,7 @@ export class PostureDetector {
         : this.pending !== null
           ? 'Checking alignment · brief movement is normal'
           : raw.limited
-            ? 'Upper-body alignment steady · hips needed for back tracking'
+            ? 'Upper-body alignment steady · seated hips excluded'
             : 'Aligned with your baseline',
     };
   }

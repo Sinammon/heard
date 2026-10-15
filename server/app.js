@@ -435,6 +435,7 @@ export async function buildApp({
             provider.review(
               'combined',
               {
+                mode: payload.mode,
                 audio: s.report.stages.audio,
                 video: s.report.stages.video,
                 ...(s.practice?.mode === 'memorization'
