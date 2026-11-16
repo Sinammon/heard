@@ -1,6 +1,55 @@
-# Heard
+<p align="center">
+  <img src="public/heard-mark.svg" alt="Heard logo" width="88">
+</p>
 
-A speaking practice studio for students and everyday conversations, built with HTML, CSS, JavaScript, MediaPipe, Fastify, and Gemini. Practice a class presentation, introduction, or idea. Full video remains on the device. Choose free practice or a timed memorization test. Every recorded practice requires explicit AI consent. Gemini receives the script for talking-point flashcards, plus audio and selected still frames for the three review stages.
+<h1 align="center">Heard</h1>
+
+<p align="center"><strong>Practice speaking out loud, then see exactly what to fix.</strong><br>
+A browser-based speaking practice studio for students and everyday conversations, with AI-assisted reviews and transparent, deterministic scoring.</p>
+
+<p align="center">
+  <img alt="JavaScript" src="https://img.shields.io/badge/JavaScript-ES%20modules-f7df1e?logo=javascript&logoColor=black">
+  <img alt="Vite" src="https://img.shields.io/badge/Vite-frontend-646cff?logo=vite&logoColor=white">
+  <img alt="Fastify" src="https://img.shields.io/badge/Fastify-API-000000?logo=fastify&logoColor=white">
+  <img alt="Gemini" src="https://img.shields.io/badge/Gemini-AI%20reviews-4285f4?logo=googlegemini&logoColor=white">
+  <img alt="MediaPipe" src="https://img.shields.io/badge/MediaPipe-posture%20tracking-0097a7">
+  <img alt="Node 22.12+" src="https://img.shields.io/badge/Node-22.12%2B-339933?logo=nodedotjs&logoColor=white">
+</p>
+
+Practice a class presentation, an introduction, or an idea. Record with your microphone (the camera is optional), and every take is reviewed in three stages: audio, posture, then a combined evaluation. Full video never leaves your device. Every recorded practice requires explicit AI consent. Gemini receives the script for talking-point flashcards, plus audio and selected still frames for the three review stages.
+
+## Highlights
+
+- **Five practice modes:** free practice, memorization test, impromptu speaking, AI interview and delivery coach. See [Five practice modes](#five-practice-modes-version-4).
+- **Three-stage reviews:** Audio Analysis, Posture Analysis, then a Combined Evaluation with coaching grounded in measured evidence.
+- **Scores you can inspect:** the rubric is deterministic and lives in `shared/scoring.js`. Gemini explains the results but never decides the score, and missing evidence produces no score instead of a made-up one.
+- **Speech metrics:** fillers, pacing, pauses and audio clarity, based on a timestamped transcript.
+- **Posture tracking in the browser:** MediaPipe Pose runs in a Web Worker, with seated and standing modes.
+- **Privacy by design:** full video stays in the browser, uploaded audio is deleted after analysis, and sessions are temporary and expire.
+- **Honest failures:** if the AI or quota is unavailable, the app says so. Local playback keeps working.
+
+## Tech stack
+
+| Layer | What it uses |
+| --- | --- |
+| Frontend | HTML, CSS, JavaScript (ES modules), Vite, self-hosted Geist and Instrument Serif |
+| Backend | Node.js 22.12+, Fastify, WebSockets for live transcription |
+| AI | Google Gemini (`@google/genai`) for scripts, transcription and reviews |
+| Vision and audio | MediaPipe Pose Landmarker, Pitchy |
+| Tests | Vitest for unit and backend tests, Playwright for browser tests |
+
+## Quick start
+
+```sh
+pnpm install
+pnpm models:download
+cp .env.example .env   # then set GEMINI_API_KEY from Google AI Studio
+pnpm dev
+```
+
+Open http://localhost:5173. You can write a script without a key, but recording and AI review need a Gemini key. The full setup, Windows commands and production build are below.
+
+The rest of this README is the technical reference: configuration, privacy, scoring, architecture, tests and deployment.
 
 ## Run locally
 
